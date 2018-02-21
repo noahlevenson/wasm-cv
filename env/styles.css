@@ -1,0 +1,30 @@
+#output-canvas {
+	width: 640px;
+	height: 480px;
+	border-width: 5px;
+	border-color: #000;
+	border-style: solid;
+}
+
+#video {
+	width: 640;
+	height: 480px;
+	border-width: 5px;
+	border-color: #000;
+	border-style: solid;
+}
+
+#input-canvas {
+	width: 640px;
+	height: 480px;
+	display: none;
+}
+
+.ui-button {
+	margin: 10px;
+}
+
+.ui-text {
+	font-family: 'arial', 'helvetica', sans-serif;
+	margin-left: 20px;
+}
