@@ -44,10 +44,13 @@ function update() {
 	// Now allocate space on the C++ heap for an array of bytes the length of our output imagedata object
 	// note that we can just use the dimensions and bytes per element from the input imgdata object
 	const outputBuf = Module._malloc(inputImgData.data.length * inputImgData.data.BYTES_PER_ELEMENT);
-	// Call the C++ function, passing the specified arguments for pointer to input buffer, pointer to output buffer,
-	// width, height + size
-	const result = Module.ccall("invert", null, ["number", "number", "number", "number", "number"], 
+	
+
+	// Call the C++ function for the processing stack
+	result = Module.ccall("stack", null, ["number", "number", "number", "number", "number"], 
 		[inputBuf, outputBuf, inputImgData.width, inputImgData.height, inputImgData.data.length]);
+	
+
 	// Create an empty output imagedata object from the output buffer
 	var outputImgData = new ImageData(inputImgData.width, inputImgData.height);
 	// iterate through the heap and copy our output buffer to the output imagedata object
