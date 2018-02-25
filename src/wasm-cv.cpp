@@ -12,10 +12,12 @@
 #include <emscripten/emscripten.h>
 #include "util.h"
 #include "util.cpp"
-#include "proc.h"
-#include "proc.cpp"
-#include "filt.h"
-#include "filt.cpp"
+#include "rgba.h"
+#include "rgba.cpp"
+#include "gray.h"
+#include "gray.cpp"
+#include "bina.h"
+#include "bina.cpp"
 
 #ifdef __cplusplus
 extern "C" {
@@ -62,8 +64,8 @@ EMSCRIPTEN_KEEPALIVE unsigned char* morphStack(unsigned char inputBuf[], unsigne
 	unsigned char* buf2 = new unsigned char[size];
 	buf2 = toBinary(buf1, buf2, w, h, size, 150);
 	//unsigned char* buf3 = new unsigned char[size];
-	outputBuf = findEdges(buf2, outputBuf, w, size);
-	//outputBuf = kDilate(buf3, outputBuf, w, size);
+	//buf3 = findEdges(buf2, buf3, w, size);
+	outputBuf = erode(buf2, outputBuf, w, size);
 	delete [] buf1;
 	delete [] buf2; 
 	//delete [] buf3;

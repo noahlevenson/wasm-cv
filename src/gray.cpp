@@ -2,6 +2,17 @@
 extern "C" {
 #endif
 
+// Threshold a grayscale image to binary
+EMSCRIPTEN_KEEPALIVE unsigned char* toBinary(unsigned char inputBuf[], unsigned char outputBuf[], int w, int h, int size, int t) {
+	for (int i = 0; i < size; i += 4) {
+		outputBuf[i] = 0;
+		outputBuf[i + 1] = 0;
+		outputBuf[i + 2] = 0;
+		outputBuf[i + 3] = inputBuf[i + 3] > t ? 255 : 0;
+	}
+	return outputBuf;
+}
+
 // Median filter a grayscale image
 EMSCRIPTEN_KEEPALIVE unsigned char* median(unsigned char inputBuf[], unsigned char outputBuf[], int w, int size) {
 	std::array<int, 9> offset = getNeighborOffsets(w);
@@ -22,49 +33,6 @@ EMSCRIPTEN_KEEPALIVE unsigned char* median(unsigned char inputBuf[], unsigned ch
 		outputBuf[i] = v - 1;
 		for (int j = 0; j < 9; j += 1) {
 			hist[inputBuf[i + offset[j]]] = 0;
-		}
-	}
-	return outputBuf;
-}
-
-// Median filter a color image
-EMSCRIPTEN_KEEPALIVE unsigned char* medianRGBA(unsigned char inputBuf[], unsigned char outputBuf[], int w, int size) {
-	std::array<int, 9> offset = getNeighborOffsets(w);
-	int histR[256] = {0};
-	int histG[256] = {0};
-	int histB[256] = {0};
-	for (int i = 0; i < size; i += 4) {
-		for (int j = 0; j < 9; j += 1) {
-			histR[inputBuf[i + offset[j]]] += 1;
-			histG[inputBuf[i + 1 + offset[j]]] += 1;
-			histB[inputBuf[i + 2 + offset[j]]] += 1;
-		}
-		int r = 0;
-		int sum = 0;
-		while (sum < 5) {
-			sum += histR[r];
-			r += 1;
-		}
-		int g = 0;
-		sum = 0;
-		while (sum < 5) {
-			sum += histG[g];
-			g += 1;
-		}
-		int b = 0;
-		sum = 0;
-		while (sum < 5) {
-			sum += histB[b];
-			b += 1;
-		}
-		outputBuf[i] = r - 1;
-		outputBuf[i + 1] = g - 1;
-		outputBuf[i + 2] = b - 1;
-		outputBuf[i + 3] = inputBuf[i + 3]; // Preserve alpha
-		for (int j = 0; j < 9; j += 1) {
-			histR[inputBuf[i + offset[j]]] = 0;
-			histG[inputBuf[i + 1 + offset[j]]] = 0;
-			histB[inputBuf[i + 2 + offset[j]]] = 0;
 		}
 	}
 	return outputBuf;
@@ -156,4 +124,4 @@ EMSCRIPTEN_KEEPALIVE unsigned char* tmf(unsigned char inputBuf[], unsigned char 
 
 #ifdef __cplusplus
 }
-#endif 
+#endif
