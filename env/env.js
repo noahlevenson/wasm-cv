@@ -47,7 +47,7 @@ function update() {
 	
 
 	// Call the C++ function for the processing stack
-	result = Module.ccall("stack", null, ["number", "number", "number", "number", "number"], 
+	Module.ccall("morphStack", null, ["number", "number", "number", "number", "number"], 
 		[inputBuf, outputBuf, inputImgData.width, inputImgData.height, inputImgData.data.length]);
 	
 
@@ -56,6 +56,7 @@ function update() {
 	// iterate through the heap and copy our output buffer to the output imagedata object
 	for (i = 0, len = inputImgData.data.length; i < len; i += 1) {
 		outputImgData.data[i] = Module.HEAPU8[outputBuf + i];
+
 	}
 	// Now just draw the output imagedata object to the output canvas!
 	outputCtx.putImageData(outputImgData, 0, 0);

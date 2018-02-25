@@ -2,25 +2,44 @@
 extern "C" {
 #endif
 
-// Return neighbor pixel offsets as an array
-// Note that the identity input pixel offset is not returned!
-// 0 1 2
-// 3 X 5
-// 6 7 8   = [0, 1, 2, 3, 4, 5, 6, 7]
-std::array<int, 8> getNeighborOffsets(int w) {
+// Return neighborhood pixel offsets as an array
+std::array<int, 9> getNeighborOffsets(int w) {
 	int p0 = -w * 4 - 4;
 	int p1 = -w * 4;
 	int p2 = -w * 4 + 4;
 	int p3 = -4;
+	int p4 = 0;
 	int p5 = 4;
 	int p6 = w * 4 - 4;
 	int p7 = w * 4;
 	int p8 = w * 4 + 4;
-	std::array<int, 8> offsets = {p0, p1, p2, p3, p5, p6, p7, p8};
+	std::array<int, 9> offsets = {p0, p1, p2, p3, p4, p5, p6, p7, p8};
 	return offsets;
 }
 
-// Get sigma (sum of neighbor pixel values) for a binary thresholded image
+// Convert an image buffer offset to x, y coords
+std::array<int, 2> offsetToVec2(int offset, int w, int h) {
+	int x = (offset / 4) % w;
+	int y = (offset - (offset % w)) / (w * 4);
+	std::array<int, 2> vec2 = {x, y};
+	return vec2;
+}
+
+// Check if a given offset is within the bounds of an image
+// TODO: Get rid of this and replace with a fast func that only
+// checks begin/end array bounds
+bool isInImageBounds(int offset, int w, int h) {
+	std::array<int, 2> coords = offsetToVec2(offset, w, h);
+	if (coords[0] < w && coords[0] >= 0 && coords[1] < h && coords[1] >= 0) {
+		return true;
+	}
+	else {
+		return false;
+	}
+}
+
+// Get sum of neighbor pixel values for a binary thresholded image
+// Note that this is NEIGHBORS ONLY, does not include p0 value
 int getSigma(unsigned char inputBuf[], int p0, int w) {
 	return inputBuf[p0 - 4 - w * 4] + inputBuf[p0 - w * 4] + inputBuf[p0 + 4 - w * 4] + inputBuf[p0 - 4] + inputBuf[p0 + 4] + 
 		inputBuf[p0 - 4 + w * 4] + inputBuf[p0 + w * 4] + inputBuf[p0 + 4 + w * 4];
@@ -193,7 +212,7 @@ EMSCRIPTEN_KEEPALIVE unsigned char* toBinary(unsigned char inputBuf[], unsigned 
 	return outputBuf;
 }
 
-// Erode (shrink) dark binary thresholded objects
+// Simple erode (shrink) dark binary thresholded objects
 EMSCRIPTEN_KEEPALIVE unsigned char* erode(unsigned char inputBuf[], unsigned char outputBuf[], int w, int h, int size) {
 	for (int i = 3; i < size; i += 4) {
 		int sigma = getSigma(inputBuf, i, w);
@@ -205,7 +224,7 @@ EMSCRIPTEN_KEEPALIVE unsigned char* erode(unsigned char inputBuf[], unsigned cha
 	return outputBuf;
 }
 
-// Dilate (grow) dark binary thresholded objects
+// Simple dilate (grow) dark binary thresholded objects 
 EMSCRIPTEN_KEEPALIVE unsigned char* dilate(unsigned char inputBuf[], unsigned char outputBuf[], int w, int h, int size) {
 	for (int i = 3; i < size; i += 4) {
 		int sigma = getSigma(inputBuf, i, w);
@@ -215,6 +234,58 @@ EMSCRIPTEN_KEEPALIVE unsigned char* dilate(unsigned char inputBuf[], unsigned ch
 		outputBuf[i] = sigma > 0 ? outputBuf[i] = 255 : outputBuf[i] = inputBuf[i];
 	}
 	return outputBuf;
+}
+
+// Binary dilation using a dilation kernel (aka "structuring element")
+EMSCRIPTEN_KEEPALIVE unsigned char* kDilate(unsigned char inputBuf[], unsigned char outputBuf[], int w, int size) {
+	std::array<int, 9> k = {1, 1, 1, 1, 1, 1, 1, 1, 1};
+	std::array<int, 9> o = getNeighborOffsets(w);
+	for (int i = 3; i < size; i += 4) {
+		outputBuf[i - 3] = 0;
+		outputBuf[i - 2] = 0;
+		outputBuf[i - 1] = 0;
+		for (int j = 0; j < 9; j += 1) { // This is inefficient - we should exit the loop and set our output pixel value as soon as we find one hit
+			outputBuf[i] = k[j] == 1 && inputBuf[i + o[j]] ? outputBuf[i] = 255 : outputBuf[i] = inputBuf[i];	
+		}
+	}
+	return outputBuf;
+}
+
+// Binary erosion using an erosion kernel (aka "structuring element")
+EMSCRIPTEN_KEEPALIVE unsigned char* kErode(unsigned char inputBuf[], unsigned char outputBuf[], int w, int size) {
+	// if every single one of a kernel's positive values also have a positive value underneath them, then the output pixel is positive
+	// otherwise, the output pixel is the same as the input pixel
+	std::array<int, 9> k = {0, 1, 0, 1, 1, 1, 0, 1, 0};
+	std::array<int, 9> o = getNeighborOffsets(w);
+	for (int i = 3; i < size; i += 4) {
+		outputBuf[i - 3] = 0;
+		outputBuf[i - 2] = 0;
+		outputBuf[i - 1] = 0;
+
+		// sum up how many positive values in the structuring element need to be checked
+		int posValues = 0;
+		for (int j = 0; j < 9; j += 1) {
+			posValues += k[j];
+		}
+
+		// Now loop through the kernel, checking to see if each positive value also has a corresponding 
+		// positive value in the image underneath it
+		int hits = 0;
+		for (int j = 0; j < 9; j += 1) {
+			if (k[j] == 1 && inputBuf[i + o[j]] == 255) {
+				hits += 1;
+			}	
+		}
+
+		// theoretically, if hits == positive values, then every 1 in the kernel had a positive pixel under it and it is "fully contained"
+		if (hits == posValues) {
+			outputBuf[i] = 0;
+		} else {
+			outputBuf[i] = inputBuf[i];
+		}
+	}
+	return outputBuf;
+	
 }
 
 // Find binary edges
