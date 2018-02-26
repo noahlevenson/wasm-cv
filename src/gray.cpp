@@ -3,8 +3,8 @@ extern "C" {
 #endif
 
 // Threshold a grayscale image to binary
-EMSCRIPTEN_KEEPALIVE unsigned char* toBinary(unsigned char inputBuf[], unsigned char outputBuf[], int w, int h, int size, int t) {
-	for (int i = 0; i < size; i += 4) {
+EMSCRIPTEN_KEEPALIVE unsigned char* binarize(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project, int t) {
+	for (int i = 0; i < project->size; i += 4) {
 		outputBuf[i] = 0;
 		outputBuf[i + 1] = 0;
 		outputBuf[i + 2] = 0;
@@ -14,12 +14,12 @@ EMSCRIPTEN_KEEPALIVE unsigned char* toBinary(unsigned char inputBuf[], unsigned 
 }
 
 // Median filter a grayscale image
-EMSCRIPTEN_KEEPALIVE unsigned char* median(unsigned char inputBuf[], unsigned char outputBuf[], int w, int size) {
-	std::array<int, 9> offset = getNeighborOffsets(w);
+EMSCRIPTEN_KEEPALIVE unsigned char* median(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project) {
+	std::array<int, 9> o = project->offsets._3x3;
 	int hist[256] = {0};
-	for (int i = 3; i < size; i += 4) {
+	for (int i = 3; i < project->size; i += 4) {
 		for (int j = 0; j < 9; j += 1) {
-			hist[inputBuf[i + offset[j]]] += 1;
+			hist[inputBuf[i + o[j]]] += 1;
 		}
 		int v = 0;
 		int sum = 0;
@@ -32,19 +32,19 @@ EMSCRIPTEN_KEEPALIVE unsigned char* median(unsigned char inputBuf[], unsigned ch
 		outputBuf[i - 1] = 0;
 		outputBuf[i] = v - 1;
 		for (int j = 0; j < 9; j += 1) {
-			hist[inputBuf[i + offset[j]]] = 0;
+			hist[inputBuf[i + o[j]]] = 0;
 		}
 	}
 	return outputBuf;
 }
 
 // Rank order filter a grayscale image
-EMSCRIPTEN_KEEPALIVE unsigned char* rank(unsigned char inputBuf[], unsigned char outputBuf[], int w, int size, int r) {
-	std::array<int, 9> offset = getNeighborOffsets(w);
+EMSCRIPTEN_KEEPALIVE unsigned char* rank(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project, int r) {
+	std::array<int, 9> o = project->offsets._3x3;
 	int hist[256] = {0};
-	for (int i = 3; i < size; i += 4) {
+	for (int i = 3; i < project->size; i += 4) {
 		for (int j = 0; j < 9; j += 1) {
-			hist[inputBuf[i + offset[j]]] += 1;
+			hist[inputBuf[i + o[j]]] += 1;
 		}
 		int v = 0;
 		int sum = 0;
@@ -57,7 +57,7 @@ EMSCRIPTEN_KEEPALIVE unsigned char* rank(unsigned char inputBuf[], unsigned char
 		outputBuf[i - 1] = 0;
 		outputBuf[i] = v - 1;
 		for (int j = 0; j < 9; j += 1) {
-			hist[inputBuf[i + offset[j]]] = 0;
+			hist[inputBuf[i + o[j]]] = 0;
 		}
 	}
 	return outputBuf;
@@ -65,13 +65,13 @@ EMSCRIPTEN_KEEPALIVE unsigned char* rank(unsigned char inputBuf[], unsigned char
 
 // Truncated median filter a grayscale image
 // TODO: Optimize this; question why it exists; question the math used to find min/max/median (i suspect some off-by-one errors)
-EMSCRIPTEN_KEEPALIVE unsigned char* tmf(unsigned char inputBuf[], unsigned char outputBuf[], int w, int size) {
-	std::array<int, 9> offset = getNeighborOffsets(w);
+EMSCRIPTEN_KEEPALIVE unsigned char* tmf(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project) {
+	std::array<int, 9> o = project->offsets._3x3;
 	int hist[256] = {0};
-	for (int i = 3; i < size; i += 4) {
+	for (int i = 3; i < project->size; i += 4) {
 		// first make the big histogram representing the range of values found in the input pixel's neighbor pixels
 		for (int j = 0; j < 9; j += 1) {
-			hist[inputBuf[i + offset[j]]] += 1;
+			hist[inputBuf[i + o[j]]] += 1;
 		}
 		// in the big histogram, find the median value
 		int median = 0;
@@ -116,7 +116,7 @@ EMSCRIPTEN_KEEPALIVE unsigned char* tmf(unsigned char inputBuf[], unsigned char 
 		outputBuf[i] = k - 1 / val;
 		// Efficiently clear the histogram
 		for (int j = 0; j < 9; j += 1) {
-			hist[inputBuf[i + offset[j]]] = 0;
+			hist[inputBuf[i + o[j]]] = 0;
 		}
 	}
 	return outputBuf;

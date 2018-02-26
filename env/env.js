@@ -35,6 +35,9 @@ function update() {
 	const t1 = performance.now();
 	// Draw the current video frame to the input canvas
 	inputCtx.drawImage(video, 0, 0);
+
+	//inputCtx.drawImage(rectangle, 0, 0);
+
 	// Read the input canvas into an imagedata object
 	const inputImgData = inputCtx.getImageData(0, 0, webcamWidth, webcamHeight);
 	// Allocate space on the C++ heap for an array of bytes the length of our input imagedata object
@@ -47,9 +50,7 @@ function update() {
 	
 
 	// Call the C++ function for the processing stack
-	Module.ccall("morphStack", null, ["number", "number", "number", "number", "number"], 
-		[inputBuf, outputBuf, inputImgData.width, inputImgData.height, inputImgData.data.length]);
-	
+	Module.ccall("morphStack", null, ["number", "number"], [inputBuf, outputBuf]);
 
 	// Create an empty output imagedata object from the output buffer
 	var outputImgData = new ImageData(inputImgData.width, inputImgData.height);

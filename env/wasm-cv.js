@@ -1629,7 +1629,7 @@ var ASM_CONSTS = [];
 
 STATIC_BASE = GLOBAL_BASE;
 
-STATICTOP = STATIC_BASE + 23536;
+STATICTOP = STATIC_BASE + 23632;
 /* global initializers */  __ATINIT__.push({ func: function() { __GLOBAL__I_000101() } }, { func: function() { __GLOBAL__sub_I_iostream_cpp() } });
 
 
@@ -1638,7 +1638,7 @@ STATICTOP = STATIC_BASE + 23536;
 
 
 
-var STATIC_BUMP = 23536;
+var STATIC_BUMP = 23632;
 Module["STATIC_BASE"] = STATIC_BASE;
 Module["STATIC_BUMP"] = STATIC_BUMP;
 
@@ -5655,20 +5655,19 @@ var __GLOBAL__sub_I_iostream_cpp = Module["__GLOBAL__sub_I_iostream_cpp"] = func
 var ___cxa_can_catch = Module["___cxa_can_catch"] = function() {  return Module["asm"]["___cxa_can_catch"].apply(null, arguments) };
 var ___cxa_is_pointer_type = Module["___cxa_is_pointer_type"] = function() {  return Module["asm"]["___cxa_is_pointer_type"].apply(null, arguments) };
 var ___errno_location = Module["___errno_location"] = function() {  return Module["asm"]["___errno_location"].apply(null, arguments) };
+var _binarize = Module["_binarize"] = function() {  return Module["asm"]["_binarize"].apply(null, arguments) };
 var _boxBlur = Module["_boxBlur"] = function() {  return Module["asm"]["_boxBlur"].apply(null, arguments) };
-var _colorMedian = Module["_colorMedian"] = function() {  return Module["asm"]["_colorMedian"].apply(null, arguments) };
+var _close3x3 = Module["_close3x3"] = function() {  return Module["asm"]["_close3x3"].apply(null, arguments) };
+var _close5x5 = Module["_close5x5"] = function() {  return Module["asm"]["_close5x5"].apply(null, arguments) };
 var _contrast = Module["_contrast"] = function() {  return Module["asm"]["_contrast"].apply(null, arguments) };
 var _darken = Module["_darken"] = function() {  return Module["asm"]["_darken"].apply(null, arguments) };
 var _deSaltPepper = Module["_deSaltPepper"] = function() {  return Module["asm"]["_deSaltPepper"].apply(null, arguments) };
 var _dilate = Module["_dilate"] = function() {  return Module["asm"]["_dilate"].apply(null, arguments) };
-var _edgeFindStack = Module["_edgeFindStack"] = function() {  return Module["asm"]["_edgeFindStack"].apply(null, arguments) };
 var _erode = Module["_erode"] = function() {  return Module["asm"]["_erode"].apply(null, arguments) };
 var _findEdges = Module["_findEdges"] = function() {  return Module["asm"]["_findEdges"].apply(null, arguments) };
 var _free = Module["_free"] = function() {  return Module["asm"]["_free"].apply(null, arguments) };
 var _gaussianApprox = Module["_gaussianApprox"] = function() {  return Module["asm"]["_gaussianApprox"].apply(null, arguments) };
 var _invert = Module["_invert"] = function() {  return Module["asm"]["_invert"].apply(null, arguments) };
-var _kDilate = Module["_kDilate"] = function() {  return Module["asm"]["_kDilate"].apply(null, arguments) };
-var _kErode = Module["_kErode"] = function() {  return Module["asm"]["_kErode"].apply(null, arguments) };
 var _level = Module["_level"] = function() {  return Module["asm"]["_level"].apply(null, arguments) };
 var _levelA = Module["_levelA"] = function() {  return Module["asm"]["_levelA"].apply(null, arguments) };
 var _levelB = Module["_levelB"] = function() {  return Module["asm"]["_levelB"].apply(null, arguments) };
@@ -5680,11 +5679,12 @@ var _main = Module["_main"] = function() {  return Module["asm"]["_main"].apply(
 var _malloc = Module["_malloc"] = function() {  return Module["asm"]["_malloc"].apply(null, arguments) };
 var _median = Module["_median"] = function() {  return Module["asm"]["_median"].apply(null, arguments) };
 var _medianRGBA = Module["_medianRGBA"] = function() {  return Module["asm"]["_medianRGBA"].apply(null, arguments) };
-var _medianStack = Module["_medianStack"] = function() {  return Module["asm"]["_medianStack"].apply(null, arguments) };
 var _memcpy = Module["_memcpy"] = function() {  return Module["asm"]["_memcpy"].apply(null, arguments) };
 var _memmove = Module["_memmove"] = function() {  return Module["asm"]["_memmove"].apply(null, arguments) };
 var _memset = Module["_memset"] = function() {  return Module["asm"]["_memset"].apply(null, arguments) };
 var _morphStack = Module["_morphStack"] = function() {  return Module["asm"]["_morphStack"].apply(null, arguments) };
+var _open3x3 = Module["_open3x3"] = function() {  return Module["asm"]["_open3x3"].apply(null, arguments) };
+var _open5x5 = Module["_open5x5"] = function() {  return Module["asm"]["_open5x5"].apply(null, arguments) };
 var _pthread_cond_broadcast = Module["_pthread_cond_broadcast"] = function() {  return Module["asm"]["_pthread_cond_broadcast"].apply(null, arguments) };
 var _pthread_mutex_lock = Module["_pthread_mutex_lock"] = function() {  return Module["asm"]["_pthread_mutex_lock"].apply(null, arguments) };
 var _pthread_mutex_unlock = Module["_pthread_mutex_unlock"] = function() {  return Module["asm"]["_pthread_mutex_unlock"].apply(null, arguments) };
@@ -5694,8 +5694,8 @@ var _shiftDown = Module["_shiftDown"] = function() {  return Module["asm"]["_shi
 var _shiftLeft = Module["_shiftLeft"] = function() {  return Module["asm"]["_shiftLeft"].apply(null, arguments) };
 var _shiftRight = Module["_shiftRight"] = function() {  return Module["asm"]["_shiftRight"].apply(null, arguments) };
 var _shiftUp = Module["_shiftUp"] = function() {  return Module["asm"]["_shiftUp"].apply(null, arguments) };
+var _sub = Module["_sub"] = function() {  return Module["asm"]["_sub"].apply(null, arguments) };
 var _tmf = Module["_tmf"] = function() {  return Module["asm"]["_tmf"].apply(null, arguments) };
-var _toBinary = Module["_toBinary"] = function() {  return Module["asm"]["_toBinary"].apply(null, arguments) };
 var _toGrayscale = Module["_toGrayscale"] = function() {  return Module["asm"]["_toGrayscale"].apply(null, arguments) };
 var establishStackSpace = Module["establishStackSpace"] = function() {  return Module["asm"]["establishStackSpace"].apply(null, arguments) };
 var getTempRet0 = Module["getTempRet0"] = function() {  return Module["asm"]["getTempRet0"].apply(null, arguments) };

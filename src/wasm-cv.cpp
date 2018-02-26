@@ -24,57 +24,34 @@ extern "C" {
 #endif
 
 // Function prototypes
-EMSCRIPTEN_KEEPALIVE unsigned char* edgeFindStack(unsigned char inputBuf[], unsigned char outputBuf[], int w, int h, int size);
-EMSCRIPTEN_KEEPALIVE unsigned char* rankStack(unsigned char inputBuf[], unsigned char outputBuf[], int w, int h, int size);
-EMSCRIPTEN_KEEPALIVE unsigned char* colorMedian(unsigned char inputBuf[], unsigned char outputBuf[], int w, int h, int size);
-EMSCRIPTEN_KEEPALIVE unsigned char* morphStack(unsigned char inputBuf[], unsigned char outputBuf[], int w, int h, int size);
+EMSCRIPTEN_KEEPALIVE unsigned char* morphStack(unsigned char inputBuf[], unsigned char outputBuf[]);
+
+// Declare the pointer to the project object as a global
+// TODO: Maybe we can create an init function that returns a pointer to a project object to the javascript side
+// and then the javascript can call all C++ functions with the function name and the pointer to the project object
+Wasmcv* project;
 
 int main() {
 	std::cout << "Hello world! Love, C++ main()\n";
+	project = new Wasmcv(640, 480);
 	return 0;
 }
 
-EMSCRIPTEN_KEEPALIVE unsigned char* edgeFindStack(unsigned char inputBuf[], unsigned char outputBuf[], int w, int h, int size) {
-	unsigned char* buf1 = new unsigned char[size];
-	unsigned char* buf2 = new unsigned char[size];
-	buf1 = toGrayscale(inputBuf, buf1, w, h, size);
-	buf2 = toBinary(buf1, buf2, w, h, size, 125);
-	outputBuf = findEdges(buf2, outputBuf, w, size);
+EMSCRIPTEN_KEEPALIVE unsigned char* morphStack(unsigned char inputBuf[], unsigned char outputBuf[]) {
+	unsigned char* buf1 = new unsigned char[project->size];
+	buf1 = toGrayscale(inputBuf, buf1, project);
+	unsigned char* buf2 = new unsigned char[project->size];
+	buf2 = binarize(buf1, buf2, project, 150);
+	unsigned char* buf3 = new unsigned char[project->size];
+	buf3 = close5x5(buf2, buf3, project, project->se._5x5disc);
+	outputBuf = findEdges(buf3, outputBuf, project);
+
 	delete [] buf1;
 	delete [] buf2; 
+	delete [] buf3;
 	return outputBuf;
 }
-
-EMSCRIPTEN_KEEPALIVE unsigned char* medianStack(unsigned char inputBuf[], unsigned char outputBuf[], int w, int h, int size) {
-	unsigned char* buf1 = new unsigned char[size];
-	buf1 = toGrayscale(inputBuf, buf1, w, h, size);
-	outputBuf = tmf(buf1, outputBuf, w, size);
-	delete [] buf1;
-	return outputBuf;
-}
-
-EMSCRIPTEN_KEEPALIVE unsigned char* colorMedian(unsigned char inputBuf[], unsigned char outputBuf[], int w, int h, int size) {
-	outputBuf = medianRGBA(inputBuf, outputBuf, w, size);
-	return outputBuf;
-}
-
-EMSCRIPTEN_KEEPALIVE unsigned char* morphStack(unsigned char inputBuf[], unsigned char outputBuf[], int w, int h, int size) {
-	unsigned char* buf1 = new unsigned char[size];
-	buf1 = toGrayscale(inputBuf, buf1, w, h, size);
-	unsigned char* buf2 = new unsigned char[size];
-	buf2 = toBinary(buf1, buf2, w, h, size, 150);
-	//unsigned char* buf3 = new unsigned char[size];
-	//buf3 = findEdges(buf2, buf3, w, size);
-	outputBuf = erode(buf2, outputBuf, w, size);
-	delete [] buf1;
-	delete [] buf2; 
-	//delete [] buf3;
-	return outputBuf;
-}
-
 
 #ifdef __cplusplus
 }
 #endif
-
-
