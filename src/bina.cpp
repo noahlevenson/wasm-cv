@@ -212,15 +212,50 @@ EMSCRIPTEN_KEEPALIVE unsigned char* sub(unsigned char inputBufA[], unsigned char
 		outputBuf[i - 3] = 0;
 		outputBuf[i - 2] = 0;
 		outputBuf[i - 1] = 0;
-		outputBuf[i] = inputBufA[i] - inputBufB[i];
-		// TODO: GET THIS MATH RIGHT
-		std::cout << int(inputBufA[i] - inputBufB[i]) << std::endl;
+		outputBuf[i] = inputBufA[i] - inputBufB[i];	
 	}
 	return outputBuf;
 }
 
-// White top hat (residue find) operator
+// White top hat (residue find) operator using a 3x3 structuring element
+// = the difference between an input image and its opening 
+EMSCRIPTEN_KEEPALIVE unsigned char* topHat3x3White(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project, BinaryStructuringElement3x3 k) {
+	unsigned char* tempBuf = new unsigned char[project->size];
+	tempBuf = open3x3(inputBuf, tempBuf, project, k);
+	outputBuf = sub(inputBuf, tempBuf, outputBuf, project);
+	delete [] tempBuf;
+	return outputBuf;
+}
 
+// White top hat (residue find) operator using a 5x5 structuring element
+// = the difference between an input image and its opening 
+EMSCRIPTEN_KEEPALIVE unsigned char* topHat5x5White(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project, BinaryStructuringElement5x5 k) {
+	unsigned char* tempBuf = new unsigned char[project->size];
+	tempBuf = open5x5(inputBuf, tempBuf, project, k);
+	outputBuf = sub(inputBuf, tempBuf, outputBuf, project);
+	delete [] tempBuf;
+	return outputBuf;
+}
+
+// Black top hat (residue find) operator using a 3x3 structuring element
+// = the difference between an image's closing and its original input image
+EMSCRIPTEN_KEEPALIVE unsigned char* topHat3x3Black(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project, BinaryStructuringElement3x3 k) {
+	unsigned char* tempBuf = new unsigned char[project->size];
+	tempBuf = close3x3(inputBuf, tempBuf, project, k);
+	outputBuf = sub(tempBuf, inputBuf, outputBuf, project);
+	delete [] tempBuf;
+	return outputBuf;
+}
+
+// Black top hat (residue find) operator using a 5x5 structuring element
+// = the difference between an image's closing and its original input image
+EMSCRIPTEN_KEEPALIVE unsigned char* topHat5x5Black(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project, BinaryStructuringElement5x5 k) {
+	unsigned char* tempBuf = new unsigned char[project->size];
+	tempBuf = close5x5(inputBuf, tempBuf, project, k);
+	outputBuf = sub(tempBuf, inputBuf, outputBuf, project);
+	delete [] tempBuf;
+	return outputBuf;
+}
 
 #ifdef __cplusplus
 }

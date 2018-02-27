@@ -13,52 +13,58 @@ EMSCRIPTEN_KEEPALIVE unsigned char* binarize(unsigned char inputBuf[], unsigned 
 	return outputBuf;
 }
 
-// Median filter a grayscale image
-EMSCRIPTEN_KEEPALIVE unsigned char* median(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project) {
-	std::array<int, 9> o = project->offsets._3x3;
-	int hist[256] = {0};
+// Simple adaptive thresholding using a 19x19 neighborhood sample, useful for binarizing print copy
+EMSCRIPTEN_KEEPALIVE unsigned char* binarizeOCR(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project) {
+	std::array<int, 361> o = project->offsets._19x19;
+	const int minrange = 255 / 5; // This constant represents the minimum likely difference between foreground and background intensity
 	for (int i = 3; i < project->size; i += 4) {
-		for (int j = 0; j < 9; j += 1) {
-			hist[inputBuf[i + o[j]]] += 1;
+		int hist[361];
+		int t;
+		for (int j = 0; j < 361; j += 1) {
+			hist[j] = inputBuf[i + o[j]];
 		}
-		int v = 0;
-		int sum = 0;
-		while (sum < 5) {
-			sum += hist[v];
-			v += 1;
+		std::sort(hist, hist + 361);
+		int range = hist[360] - hist[0];
+		if (range > minrange) {
+			t = (hist[0] + hist[360]) / 2;
+		} else {
+			t = (hist[360] - minrange) / 2;
 		}
-		outputBuf[i - 3] = 0;
-		outputBuf[i - 2] = 0;
-		outputBuf[i - 1] = 0;
-		outputBuf[i] = v - 1;
-		for (int j = 0; j < 9; j += 1) {
-			hist[inputBuf[i + o[j]]] = 0;
-		}
+		outputBuf[i] = inputBuf[i] > t ? 0 : 255;
 	}
 	return outputBuf;
 }
 
-// Rank order filter a grayscale image
-EMSCRIPTEN_KEEPALIVE unsigned char* rank(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project, int r) {
+// Median filter a grayscale image using a 3x3 neighborhood sample
+EMSCRIPTEN_KEEPALIVE unsigned char* median3x3(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project) {
 	std::array<int, 9> o = project->offsets._3x3;
-	int hist[256] = {0};
 	for (int i = 3; i < project->size; i += 4) {
-		for (int j = 0; j < 9; j += 1) {
-			hist[inputBuf[i + o[j]]] += 1;
+		unsigned char hist[9] = {0};
+		for (int j = 0; j < 9; j += 1){
+			hist[j] = inputBuf[i + o[j]];
 		}
-		int v = 0;
-		int sum = 0;
-		while (sum < r) {
-			sum += hist[v];
-			v += 1;
-		}
+		std::sort(hist, hist + 9);
 		outputBuf[i - 3] = 0;
 		outputBuf[i - 2] = 0;
 		outputBuf[i - 1] = 0;
-		outputBuf[i] = v - 1;
+		outputBuf[i] = hist[5];
+	}
+	return outputBuf;
+}
+
+// Rank order filter a grayscale image using a 3x3 neighborhood sample
+EMSCRIPTEN_KEEPALIVE unsigned char* rank3x3(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project, int r) {
+	std::array<int, 9> o = project->offsets._3x3;
+	for (int i = 3; i < project->size; i += 4) {
+		unsigned char hist[9] = {0};
 		for (int j = 0; j < 9; j += 1) {
-			hist[inputBuf[i + o[j]]] = 0;
+			hist[j] = inputBuf[i + o[j]];
 		}
+		std::sort(hist, hist + 9);
+		outputBuf[i - 3] = 0;
+		outputBuf[i - 2] = 0;
+		outputBuf[i - 1] = 0;
+		outputBuf[i] = hist[r];
 	}
 	return outputBuf;
 }

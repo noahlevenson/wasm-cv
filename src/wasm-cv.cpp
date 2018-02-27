@@ -3,7 +3,7 @@
 *
 * source ./emsdk_env.sh --build=Release
 *
-* emcc wasm-cv.cpp -s TOTAL_MEMORY=512MB -s "EXTRA_EXPORTED_RUNTIME_METHODS=['ccall', 'cwrap']" -s WASM=1 -O1 -std=c++1z -o ../env/wasm-cv.js
+* emcc wasm-cv.cpp -s TOTAL_MEMORY=512MB -s "EXTRA_EXPORTED_RUNTIME_METHODS=['ccall', 'cwrap']" -s WASM=1 -O3 -std=c++1z -o ../env/wasm-cv.js
 */
 
 #include <iostream>
@@ -25,6 +25,8 @@ extern "C" {
 
 // Function prototypes
 EMSCRIPTEN_KEEPALIVE unsigned char* morphStack(unsigned char inputBuf[], unsigned char outputBuf[]);
+EMSCRIPTEN_KEEPALIVE unsigned char* ocr(unsigned char inputBuf[], unsigned char outputBuf[]);
+EMSCRIPTEN_KEEPALIVE unsigned char* medianStack(unsigned char inputBuf[], unsigned char outputBuf[]);
 
 // Declare the pointer to the project object as a global
 // TODO: Maybe we can create an init function that returns a pointer to a project object to the javascript side
@@ -43,12 +45,30 @@ EMSCRIPTEN_KEEPALIVE unsigned char* morphStack(unsigned char inputBuf[], unsigne
 	unsigned char* buf2 = new unsigned char[project->size];
 	buf2 = binarize(buf1, buf2, project, 150);
 	unsigned char* buf3 = new unsigned char[project->size];
-	buf3 = close5x5(buf2, buf3, project, project->se._5x5disc);
-	outputBuf = findEdges(buf3, outputBuf, project);
-
+	buf3 = gaussianApprox(buf2, buf3, project);
+	unsigned char* buf4 = new unsigned char[project->size];
+	buf4 = close5x5(buf3, buf4, project, project->se._5x5disc);
+	outputBuf = findEdges(buf4, outputBuf, project);
 	delete [] buf1;
 	delete [] buf2; 
 	delete [] buf3;
+	delete [] buf4;
+	return outputBuf;
+}
+
+EMSCRIPTEN_KEEPALIVE unsigned char* ocr(unsigned char inputBuf[], unsigned char outputBuf[]) {
+	unsigned char* buf1 = new unsigned char[project->size];
+	buf1 = toGrayscale(inputBuf, buf1, project);
+	outputBuf = binarizeOCR(buf1, outputBuf, project);
+	delete [] buf1;
+	return outputBuf;
+}
+
+EMSCRIPTEN_KEEPALIVE unsigned char* medianStack(unsigned char inputBuf[], unsigned char outputBuf[]) {
+	unsigned char* buf1 = new unsigned char[project->size];
+	buf1 = toGrayscale(inputBuf, buf1, project);
+	outputBuf = rank3x3(buf1, outputBuf, project, 8);
+	delete [] buf1;
 	return outputBuf;
 }
 

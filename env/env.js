@@ -50,7 +50,9 @@ function update() {
 	
 
 	// Call the C++ function for the processing stack
-	Module.ccall("morphStack", null, ["number", "number"], [inputBuf, outputBuf]);
+	//Module.ccall("morphStack", null, ["number", "number"], [inputBuf, outputBuf]);
+	//Module.ccall("ocr", null, ["number", "number"], [inputBuf, outputBuf]);
+	Module.ccall("medianStack", null, ["number", "number"], [inputBuf, outputBuf]);
 
 	// Create an empty output imagedata object from the output buffer
 	var outputImgData = new ImageData(inputImgData.width, inputImgData.height);
