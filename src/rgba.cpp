@@ -57,7 +57,7 @@ EMSCRIPTEN_KEEPALIVE unsigned char* invert(unsigned char inputBuf[], unsigned ch
 }
 
 // Shift an RGBA image left
-EMSCRIPTEN_KEEPALIVE unsigned char* shiftLeft(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project, int d) {
+EMSCRIPTEN_KEEPALIVE unsigned char* shiftLeft(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project, int d = 1) {
 	for (int i = 0; i < project->size; i += 4) {
 		outputBuf[i] = inputBuf[i + d * 4];
 		outputBuf[i + 1] = inputBuf[i + 1 + d * 4];
@@ -68,7 +68,7 @@ EMSCRIPTEN_KEEPALIVE unsigned char* shiftLeft(unsigned char inputBuf[], unsigned
 }
 
 // Shift an RGBA image right
-EMSCRIPTEN_KEEPALIVE unsigned char* shiftRight(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project, int d) {
+EMSCRIPTEN_KEEPALIVE unsigned char* shiftRight(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project, int d = 1) {
 	for (int i = 0; i < project->size; i += 4) {
 		outputBuf[i] = inputBuf[i - d * 4];
 		outputBuf[i + 1] = inputBuf[i + 1 - d * 4];
@@ -79,7 +79,7 @@ EMSCRIPTEN_KEEPALIVE unsigned char* shiftRight(unsigned char inputBuf[], unsigne
 }
 
 // Shift an RGBA image up
-EMSCRIPTEN_KEEPALIVE unsigned char* shiftUp(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project, int d) {
+EMSCRIPTEN_KEEPALIVE unsigned char* shiftUp(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project, int d = 1) {
 	for (int i = 0; i < project->size; i += 4) {
 		outputBuf[i] = inputBuf[i + d * project->w * 4];
 		outputBuf[i + 1] = inputBuf[i + 1 + d * project->w * 4];
@@ -90,7 +90,7 @@ EMSCRIPTEN_KEEPALIVE unsigned char* shiftUp(unsigned char inputBuf[], unsigned c
 }
 
 // Shift an RGBA image down
-EMSCRIPTEN_KEEPALIVE unsigned char* shiftDown(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project, int d) {
+EMSCRIPTEN_KEEPALIVE unsigned char* shiftDown(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project, int d = 1) {
 	for (int i = 0; i < project->size; i += 4) {
 		outputBuf[i] = inputBuf[i - d * project->w * 4];
 		outputBuf[i + 1] = inputBuf[i + 1 - d * project->w * 4];

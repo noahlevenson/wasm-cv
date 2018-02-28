@@ -53,7 +53,7 @@ EMSCRIPTEN_KEEPALIVE unsigned char* median3x3(unsigned char inputBuf[], unsigned
 }
 
 // Rank order filter a grayscale image using a 3x3 neighborhood sample
-EMSCRIPTEN_KEEPALIVE unsigned char* rank3x3(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project, int r) {
+EMSCRIPTEN_KEEPALIVE unsigned char* rank3x3(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project, int r = 5) {
 	std::array<int, 9> o = project->offsets._3x3;
 	for (int i = 3; i < project->size; i += 4) {
 		unsigned char hist[9] = {0};

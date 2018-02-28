@@ -202,6 +202,12 @@ class ImageBuffer {
 		unsigned char* data;
 };
 
+// Initialize a new project and get a pointer to its object
+EMSCRIPTEN_KEEPALIVE Wasmcv* init(int w, int h) {
+	Wasmcv* project = new Wasmcv(640, 480);
+	return project;
+}
+
 #ifdef __cplusplus
 }
 #endif

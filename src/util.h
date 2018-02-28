@@ -2,8 +2,6 @@
 extern "C" {
 #endif
 
-// Function prototypes
-
 // Class declarations
 class NeighborhoodOffsets;
 class BinaryStructuringElement3x3;
@@ -12,6 +10,9 @@ class Se;
 class Wasmcv;
 class Pixel;
 class ImageBuffer;
+
+// Function prototypes
+EMSCRIPTEN_KEEPALIVE Wasmcv* init(int w, int h);
 
 #ifdef __cplusplus
 }

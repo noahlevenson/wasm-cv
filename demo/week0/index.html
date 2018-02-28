@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+
+<head>
+	<title>Experiment!</title>
+
+	<style type="text/css">
+
+	#canvas {
+		width: 640px;
+		height: 480px;
+		border-width: 5px;
+		border-color: #000;
+		border-style: solid;
+	}
+
+	#video {
+		width: 640;
+		height: 480px;
+		border-width: 5px;
+		border-color: #000;
+		border-style: solid;
+	}
+
+	#offscreenBuffer {
+		width: 640px;
+		height: 480px;
+		visibility: hidden;
+		display: none;
+	}
+
+	#newYork {
+		visibility: hidden;
+		display: none;
+	}
+
+	.ui-button-js {
+		margin: 10px;
+	}
+
+	.ui-button-cpp {
+		margin: 10px;
+	}
+
+	.ui-text {
+		font-family: 'arial', 'helvetica', sans-serif;
+		margin-left: 20px;
+	}
+
+	</style>
+
+</head>
+
+	<body>
+
+		<canvas id="canvas"></canvas> 
+
+		<video id="video" preload="auto" loop playsinline autoplay></video>
+
+
+		<canvas id="offscreenBuffer"></canvas>
+
+		<img src="image.jpg" id="newYork">
+
+
+
+
+		<br>
+
+		<!-- <button id="action" class="ui-button" onclick="mainLoop()">No processing</button> -->
+
+		<span class="ui-text">edge detect:</span> 
+
+		<button id="action" class="ui-button-js" onclick="mainLoop(jsEdgeDetect)">js</button>
+
+		<button id="action" class="ui-button-cpp" onclick="mainLoop(cppEdgeDetect)">c++ / wasm</button>
+
+		<br>
+
+		<span class="ui-text">3x3 box blur:</span>
+
+		<button id="action" class="ui-button-js" onclick="mainLoop(jsBoxBlur)">js</button>
+
+		<button id="action" class="ui-button-cpp" onclick="mainLoop(cppBoxBlur3x3)">c++ / wasm</button>
+
+		<br>
+
+		<span class="ui-text">3x3 box blur + edge detect: </span>
+
+		<button id="action" class="ui-button-js" onclick="mainLoop(jsBoxBlurAndEdgeDetect)">js</button>
+
+		<button id="action" class="ui-button-cpp" onclick="mainLoop(cppBoxBlurAndEdgeDetect)">c++ / wasm</button>
+
+		<br>
+
+		<span class="ui-text">sobel-feldman operator: </span>
+
+		<button id="action" class="ui-button-js" onclick="mainLoop(jsSobelFeldman)">js</button>
+
+		<button id="action" class="ui-button-cpp" onclick="mainLoop(cppSobelFeldman)">c++ / wasm</button>
+
+		<br><br>
+
+		<button id="action" style="margin-left: 20px;" onclick="stop()">Just stop it</button>
+
+		
+
+		<!-- This is the web assembly glue code that links up the wasm module -->
+		<script src="index.js"></script>
+
+		<script>
+
+
+			// identifier in which we hold the id for the requestanimationframe
+			// this is a terrible way to do this
+			let loopId;
+
+
+			// identifiers for the webcam's native width/height...
+			const webcamWidth = 640;
+			const webcamHeight = 480;
+
+			const canvas = document.getElementById("canvas");
+
+			const video = document.getElementById("video");
+
+			
+
+			const offscreenBuffer = document.getElementById("offscreenBuffer");
+
+			const newYorkImage = document.getElementById("newYork");
+
+			canvas.width = webcamWidth;
+			canvas.height = webcamHeight;
+
+			offscreenBuffer.width = webcamWidth;
+			offscreenBuffer.height = webcamHeight;
+
+			const ctx = canvas.getContext("2d");
+
+			const offscreenCtx = offscreenBuffer.getContext("2d");
+
+			//ctx.drawImage(newYorkImage, -500, -500);
+
+			const framebuffer = ctx.getImageData(0, 0, webcamWidth, webcamHeight);
+
+
+
+				// here's where we set up the stream from the user's webcam
+                // TODO: needs better error handling and fall through 
+                navigator.mediaDevices.getUserMedia({video : true}).then(function(stream) {
+                    //console.log(stream);
+                    video.srcObject = stream;
+                }).catch(function(err) {
+                    console.log(err);
+                });
+
+
+
+
+			// this is just a loop that draws the video signal from your webcam
+			// to an offscreen canvas, takes a snapshot of the canvas as an imagedata
+			// object, then sends that imagedata object to our C++ edgeDetect() function
+			// for processing
+			function mainLoop(f = (framebuffer) => framebuffer) {
+
+				loopId = window.requestAnimationFrame(function() {
+
+					// store the start time for benchmarking
+					const t1 = performance.now();
+
+					// draw the raw video to our offscreen framebuffer
+					offscreenCtx.drawImage(document.getElementById("video"), 0, 0);
+					// turn that offscreen frame buffer into an imagedata object
+					const framebuffer = offscreenCtx.getImageData(0, 0, webcamWidth, webcamHeight);
+
+					// perform function f on the framebuffer
+					// function f must return a new framebuffer
+					// if we do not specify function f as an argument,
+					// the function we provide as a default argument
+					// just returns the original framebuffer
+					const newBuffer = f(framebuffer);
+					
+					// draw the new buffer to the canvas!
+					ctx.putImageData(newBuffer, 0, 0);
+
+					// store the end time for benchmarking
+					const t2 = performance.now() - t1;
+
+					// draw the benchmark to the canvas
+					ctx.font = "30px Arial";
+					ctx.fillStyle = "red";
+					ctx.fillText(t2.toFixed(2) + " ms",10,50);
+
+					// recurse it 
+					mainLoop(f);
+				}.bind(this));
+			}
+
+
+
+			function cppEdgeDetect(framebuffer) {
+				// we need to create the framebuffer on the javascript side, so we use_malloc()
+				// to allocate a piece of memory that is the length of the framebuffer multiplied by
+				// the size of each element in a framebuffer... framebuffers are composed of bytes,
+				// each one representing an r/g/b/a value...
+				// if we were passing a different kind of data to a C/C++ function, like an array
+				// of 32-bit unsigned integers, we would have to make sure that we multiplied
+				// by 4 bytes (the length of one 32-bit unsigned integer)
+				//
+				// the buffer variable is a pointer to the allocated memory
+				let buffer = Module._malloc(framebuffer.data.length * framebuffer.data.BYTES_PER_ELEMENT);
+
+				// now that we have a pointer to some allocated memory, we need to actually copy
+				// the framebuffer, which contains our image bitmap, to the heap.  note that we 
+				// need to specify HEAPU8, which is the object used for interacting with 8 bit unsigned integers
+				// on the heap.  a C++ unsigned char is a javascript 8-bit unsigned integer...
+				Module.HEAPU8.set(framebuffer.data, buffer);
+
+				// now we actually call the C++ function, which is called edgeDetect().  edgeDetect()
+				// takes one argument, an array of unsigned chars -- aka a framebuffer.  
+				// TODO, we have to refactor it to accept another argument - an integer representing
+				// the length of the buffer it's receiving, since C++ arrays have no length property
+				// to tell us how long they are.  you can add arguments below by adding another 
+				// type in the first array ["number"] and then just putting the argument in the second
+				// array [buffer] ...
+				// the C++ function returns its payload into the result variable below, and in our
+				// case, the C++ function returns a pointer to an array of unsigned chars on the heap
+				let result = Module.ccall("edgeDetect", null, ["number"], [buffer]);
+ 
+				// now we create a new, empty image data object which is where we'll dump our output
+				// pixels, thus creating a complete, processed image
+				let destinationBuffer = new ImageData(webcamWidth, webcamHeight);
+
+				// now we have to copy the results of our edgeDetect() c++ function, which is just
+				// an array of values on the heap, into our canvas-writable image data object that we
+				// just created above.  
+				for (i = 0; i < 1228800; i += 1) {
+					destinationBuffer.data[i] = Module.HEAPU8[result + i];
+				}
+
+				// now we have an imagedata object representing our final, processed image - 
+				// so we just put that image data directly onto a canvas 
+				//ctx.putImageData(destinationBuffer, 0, 0);
+
+				console.log(Module);
+
+				// Before we're done, we have to manually free the memory from the heap - first
+				// free the memory we allocated to the input buffer, then free the memory
+				// that the C++ function allocated to the output buffer
+				Module._free(buffer);
+				Module._free(result);
+
+				return destinationBuffer;
+			}
+
+
+
+
+			function cppBoxBlur3x3(framebuffer) {
+				let buffer = Module._malloc(framebuffer.data.length * framebuffer.data.BYTES_PER_ELEMENT);
+
+				Module.HEAPU8.set(framebuffer.data, buffer);
+
+				let result = Module.ccall("boxBlur3x3", null, ["number"], [buffer]);
+
+				let destinationBuffer = new ImageData(webcamWidth, webcamHeight);
+
+				for (i = 0; i < 1228800; i += 1) {
+					destinationBuffer.data[i] = Module.HEAPU8[result + i];
+				}
+
+				Module._free(buffer);
+				Module._free(result);
+
+				return destinationBuffer;
+			}
+
+
+
+
+			function cppBoxBlurAndEdgeDetect(framebuffer) {
+				let buffer = Module._malloc(framebuffer.data.length * framebuffer.data.BYTES_PER_ELEMENT);
+
+				Module.HEAPU8.set(framebuffer.data, buffer);
+
+				let result = Module.ccall("boxBlurAndEdgeDetect", null, ["number"], [buffer]);
+
+				let destinationBuffer = new ImageData(webcamWidth, webcamHeight);
+
+				for (i = 0; i < 1228800; i += 1) {
+					destinationBuffer.data[i] = Module.HEAPU8[result + i];
+				}
+
+				Module._free(buffer);
+				Module._free(result);
+
+				return destinationBuffer;
+			}
+
+
+
+
+
+			function cppSobelFeldman(framebuffer) {
+				let buffer = Module._malloc(framebuffer.data.length * framebuffer.data.BYTES_PER_ELEMENT);
+
+				Module.HEAPU8.set(framebuffer.data, buffer);
+
+				let result = Module.ccall("sobelFeldman", null, ["number"], [buffer]);
+
+				let destinationBuffer = new ImageData(webcamWidth, webcamHeight);
+
+				for (i = 0; i < 1228800; i += 1) {
+					destinationBuffer.data[i] = Module.HEAPU8[result + i];
+				}
+
+				Module._free(buffer);
+				Module._free(result);
+
+				return destinationBuffer;
+			}
+
+
+
+
+
+			function jsSobelFeldman(framebuffer) {
+				const neighborOffsets = [[-1, -1], [0, -1], [1, -1], [-1, 0], [0, 0], [1, 0], [-1, 1], [0, 1], [1, 1]];
+				const kernelX = [1, 0, -1, 2, 0, -2, 1, 0, -1];
+				const kernelY = [1, 2, 1, 0, 0, 0, -1, -2, -1];
+
+				const destinationBuffer = new ImageData(framebuffer.width, framebuffer.height);
+
+				for (let offset = 0, len = framebuffer.data.length; offset < len; offset += 4) {
+					const weightedNeighbors = [];
+					const currentPoint = offsetToPoint(offset, framebuffer.width);
+
+					for (let i = 0, len = neighborOffsets.length; i < len; i += 1) {     
+					
+						if (checkImageBounds(currentPoint.x + neighborOffsets[i][0], currentPoint.y + neighborOffsets[i][1], framebuffer.width, framebuffer.height)) {
+
+							const neighbor = getPixel(framebuffer, currentPoint.x + neighborOffsets[i][0], currentPoint.y + neighborOffsets[i][1]);
+
+							neighbor.r *= kernelX[i];
+							neighbor.g *= kernelX[i];
+							neighbor.b *= kernelX[i];
+							//neighbor.a *= convolutionMatrix[i]; // do not compute alpha value because we're preserving alpha values! 
+
+							weightedNeighbors.push(neighbor);
+
+						}
+
+						else {
+							const clamped = clampToImageEdges(currentPoint.x + neighborOffsets[i][0], currentPoint.y + neighborOffsets[i][1], framebuffer.width, framebuffer.height);
+
+							const neighbor = getPixel(framebuffer, clamped.x, clamped.y);
+
+							neighbor.r *= kernelX[i];
+							neighbor.g *= kernelX[i];
+							neighbor.b *= kernelX[i];
+							//neighbor.a *= convolutionMatrix[i]; // do not ccompute alpha value because we're preserving alpha value!
+
+							weightedNeighbors.push(neighbor);
+						}
+					}
+
+					for (let i = 0, len = neighborOffsets.length; i < len; i += 1) {     
+					
+						if (checkImageBounds(currentPoint.x + neighborOffsets[i][0], currentPoint.y + neighborOffsets[i][1], framebuffer.width, framebuffer.height)) {
+
+							const neighbor = getPixel(framebuffer, currentPoint.x + neighborOffsets[i][0], currentPoint.y + neighborOffsets[i][1]);
+
+							neighbor.r *= kernelY[i];
+							neighbor.g *= kernelY[i];
+							neighbor.b *= kernelY[i];
+							//neighbor.a *= convolutionMatrix[i]; // do not compute alpha value because we're preserving alpha values! 
+
+							weightedNeighbors.push(neighbor);
+
+						}
+
+						else {
+							const clamped = clampToImageEdges(currentPoint.x + neighborOffsets[i][0], currentPoint.y + neighborOffsets[i][1], framebuffer.width, framebuffer.height);
+
+							const neighbor = getPixel(framebuffer, clamped.x, clamped.y);
+
+							neighbor.r *= kernelY[i];
+							neighbor.g *= kernelY[i];
+							neighbor.b *= kernelY[i];
+							//neighbor.a *= convolutionMatrix[i]; // do not ccompute alpha value because we're preserving alpha value!
+
+							weightedNeighbors.push(neighbor);
+						}
+					}
+
+					let r = weightedNeighbors.reduce((sum, n) => sum + n.r, 0);
+					let g = weightedNeighbors.reduce((sum, n) => sum + n.g, 0);
+					let b = weightedNeighbors.reduce((sum, n) => sum + n.b, 0);
+					let a = getPixel(framebuffer, currentPoint.x, currentPoint.y).a; // note that we simply assign the input pixel's original alpha value to preserve it
+
+					const p = new Pixel(r, g, b, a);
+
+
+					setPixel(destinationBuffer, p, currentPoint.x, currentPoint.y);
+
+				}
+
+				return destinationBuffer;
+
+			}
+
+
+
+			function jsBoxBlurAndEdgeDetect(framebuffer) {
+				return jsEdgeDetect(jsBoxBlur(framebuffer));
+			}
+
+
+
+
+
+			
+
+
+
+
+			// just stops all the processing so ur computer can cool down
+			function stop() {
+				if (loopId) {
+					window.cancelAnimationFrame(loopId);
+				}
+			}
+
+
+			/*
+			* Fades a bitmap object to white
+			* Works by incrementing all pixel values 255 times
+			* TODO: don't operate on alpha channel
+			*/
+			function fadeToWhite(framebuffer, speed = 5, i = 0) {
+				setTimeout(function() {
+	
+					for (let j = 0, len = framebuffer.data.length; j < len; j += 1) {
+						framebuffer.data[j] += 1;
+					}
+
+					ctx.putImageData(framebuffer, 0, 0);
+
+					if (i < 255) fadeToWhite(framebuffer, speed, i += 1); 
+
+
+				}.bind(this), speed);
+
+			}
+
+			/*
+			* Constructor function for a pixel object
+			*/
+			function Pixel(r = 0, g = 0, b = 0, a = 255) {
+				this.r = r;
+				this.g = g;
+				this.b = b;
+				this.a = a;
+			}
+
+			/*
+			* Get a pixel from a specified bitmap object
+			* Provides a method to get values from image data bitmaps
+			* on the pixel level rather than the raw offset level
+			*/
+			function getPixel(imgDataObj, x, y) {
+				const offset = pointToOffset(x, y, imgDataObj.width);
+				const d = imgDataObj.data;
+				return {r: d[offset], g: d[offset + 1], b: d[offset + 2], a: d[offset + 3]};
+			}
+
+			/*
+			* Set a pixel on a specified bitmap object
+			* Provides a method to set values on image data bitmaps
+			* on the pixel level rather than the raw offset level
+			*/
+			function setPixel(imgDataObj, pixelObj, x, y) {
+				const offset = pointToOffset(x, y, imgDataObj.width);
+				const d = imgDataObj.data;
+				d[offset] = pixelObj.r;
+				d[offset + 1] = pixelObj.g;
+				d[offset + 2] = pixelObj.b;
+				d[offset + 3] = pixelObj.a;
+			}
+
+			/*
+			* Convert a geometric point expressed as x, y coordinates
+			* to a raw image data bitmap offset
+			*/
+			function pointToOffset(x, y, width) {
+				return y * 4 * width  + (x * 4);
+			}
+
+			/*
+			* Convert a raw image data offset to a geometric point
+			* expressed as x, y coordinates
+			*/
+			function offsetToPoint(offset, width) {
+				return {x: (offset / 4) % width, y: Math.floor((offset - (offset % width)) / (width * 4))}; 
+			}
+
+			/*
+			* Evaluate whether the specified geometric point
+			* is within the specified width and height bounds
+			* returns true if so
+			*/
+			function checkImageBounds(x, y, w, h) {
+				if (x < w && x >= 0 && y < h && y >= 0) {
+					return true;
+				}
+			}
+
+			/*
+			* Clamp the specified geometric point to the edges
+			* associated with the specified width and height bounds
+			* Provides a simple implementation of "extend" mode edge handling
+			* for image convolution
+			 */
+			function clampToImageEdges(x, y, w, h) {
+				if (x >= w) x = w - 1;
+				if (x < 0) x = 0;
+				if (y >= h) y = h - 1;
+				if (y < 0) y = 0;
+				return {x: x, y: y};
+			}
+
+	
+			/*
+			* Implementation of the box blur image convolution
+			* Creates a kernel matrix with a user specified radius
+			* Uses "extend" mode edge handling
+			* per box blur spec, a normalization of 9 is applied
+			* power > 1 will recurse the convolution to increase its effect
+			*
+			* the function iterates through raw imagedata offsets to process
+			* the image, but it converts the offsets to x/y coords to 
+			* simplify image bounds checking. A better and likely
+			* faster implementation of this would probably do away with
+			* the x/y geometry conversions and instead operate only on offsets
+			*/
+			function jsBoxBlur(framebuffer, power = 1, radius = 1, n = 1) {
+				const neighborOffsets = [];
+				for (let i = 0, len = radius * 2 + 1; i < len; i += 1) {
+					for (let j = 0, len = radius * 2 + 1; j < len; j += 1) {
+						neighborOffsets.push([-radius + j, -radius + i]);
+					}	
+				}
+				const destinationBuffer = new ImageData(framebuffer.width, framebuffer.height);
+				for (let offset = 0, len = framebuffer.data.length; offset < len; offset += 4) {
+					const neighbors = [];
+					const currentPoint = offsetToPoint(offset, framebuffer.width);
+					for (let i = 0, len = neighborOffsets.length; i < len; i += 1) {
+						if (checkImageBounds(currentPoint.x + neighborOffsets[i][0], currentPoint.y + neighborOffsets[i][1], framebuffer.width, framebuffer.height)) {
+							neighbors.push(getPixel(framebuffer, currentPoint.x + neighborOffsets[i][0], currentPoint.y + neighborOffsets[i][1]));
+						}
+						else {
+							const clamped = clampToImageEdges(currentPoint.x + neighborOffsets[i][0], currentPoint.y + neighborOffsets[i][1], framebuffer.width, framebuffer.height);
+							neighbors.push(getPixel(framebuffer, clamped.x, clamped.y));
+						}
+					}
+					let r = neighbors.reduce((sum, n) => sum + n.r, 0);
+					let g = neighbors.reduce((sum, n) => sum + n.g, 0);
+					let b = neighbors.reduce((sum, n) => sum + n.b, 0);
+					let a = neighbors.reduce((sum, n) => sum + n.a, 0);
+					r = Math.floor(r / 9);
+					g = Math.floor(g / 9);
+					b = Math.floor(b / 9);
+					a = Math.floor(a / 9);
+					const p = new Pixel(r, g, b, a);
+					setPixel(destinationBuffer, p, currentPoint.x, currentPoint.y);
+				}
+				if (n < power) {
+					jsBoxBlur(destinationBuffer, power, radius, n += 1);
+				}
+				else {
+					return destinationBuffer;
+				}
+				
+			}
+
+
+			/*
+			* Implentation of the edge detection image convolution
+			* Per the edge detection spec, this convolution
+			* uses no normalization, and it preserves alpha - meaning
+			* the alpha value for each output pixel equals its
+			* input value, rather than being weighted and computed 
+			* with its neighbors. 
+			*
+			* see above comments for box blur re: geometry conversion
+			* and optimization
+			*/
+			function jsEdgeDetect(framebuffer) {
+				//console.time();
+				// X X X
+				// X P X
+				// X X X
+
+				//EDGE DETECTION NEEDS TO PRESERVE ALPHA!
+
+				const neighborOffsets = [[-1, -1], [0, -1], [1, -1], [-1, 0], [0, 0], [1, 0], [-1, 1], [0, 1], [1, 1]];
+
+				const convolutionMatrix = [-1, -1, -1, -1, 8, -1, -1, -1, -1];
+
+				//const convolutionMatrix = [0, 1, 0, 1, -4, 1, 0, 1, 0];
+
+				const destinationBuffer = new ImageData(framebuffer.width, framebuffer.height);
+
+				for (let offset = 0, len = framebuffer.data.length; offset < len; offset += 4) {
+					const weightedNeighbors = [];
+					const currentPoint = offsetToPoint(offset, framebuffer.width);
+
+					for (let i = 0, len = neighborOffsets.length; i < len; i += 1) {     
+					
+						if (checkImageBounds(currentPoint.x + neighborOffsets[i][0], currentPoint.y + neighborOffsets[i][1], framebuffer.width, framebuffer.height)) {
+
+							const neighbor = getPixel(framebuffer, currentPoint.x + neighborOffsets[i][0], currentPoint.y + neighborOffsets[i][1]);
+
+							neighbor.r *= convolutionMatrix[i];
+							neighbor.g *= convolutionMatrix[i];
+							neighbor.b *= convolutionMatrix[i];
+							//neighbor.a *= convolutionMatrix[i]; // do not compute alpha value because we're preserving alpha values! 
+
+							weightedNeighbors.push(neighbor);
+
+						}
+
+						else {
+							const clamped = clampToImageEdges(currentPoint.x + neighborOffsets[i][0], currentPoint.y + neighborOffsets[i][1], framebuffer.width, framebuffer.height);
+
+							const neighbor = getPixel(framebuffer, clamped.x, clamped.y);
+
+							neighbor.r *= convolutionMatrix[i];
+							neighbor.g *= convolutionMatrix[i];
+							neighbor.b *= convolutionMatrix[i];
+							//neighbor.a *= convolutionMatrix[i]; // do not ccompute alpha value because we're preserving alpha value!
+
+							weightedNeighbors.push(neighbor);
+						}
+					}
+
+					let r = weightedNeighbors.reduce((sum, n) => sum + n.r, 0);
+					let g = weightedNeighbors.reduce((sum, n) => sum + n.g, 0);
+					let b = weightedNeighbors.reduce((sum, n) => sum + n.b, 0);
+					let a = getPixel(framebuffer, currentPoint.x, currentPoint.y).a; // note that we simply assign the input pixel's original alpha value to preserve it
+
+					const p = new Pixel(r, g, b, a);
+
+
+					setPixel(destinationBuffer, p, currentPoint.x, currentPoint.y);
+
+				}
+
+				//console.timeEnd();
+
+				//ctx.putImageData(destinationBuffer, 0, 0);
+
+				
+				return destinationBuffer;
+
+			}
+
+
+
+
+
+
+
+			function edgeDetectParallel(framebuffer) {
+
+				const destinationBuffer = new ImageData(framebuffer.width, framebuffer.height);
+
+				// now we loop through every input pixel in the source image
+				for (let offset = 0, len = framebuffer.data.length; offset < len; offset += 4) {
+
+					// this is just type converting our current offset to a transferrable 
+					// object type so we can share it with the web worker - it is ANTI-PERFORMANT
+					// and we should come up with a better way to do this
+					const offsetToSend = new Uint32Array(1);
+					offsetToSend[0] = offset;
+
+					let worker = new Worker("worker.js");
+
+					worker.postMessage({offset: offsetToSend}, [offsetToSend.buffer]);
+
+
+				}
+
+
+			}
+
+
+
+
+
+
+			/*
+			* Function to convolve an image with any 3x3 convolution matrix
+			* accepts optional normalization value
+			* TODO: add support for a bias parameter, which is a value to add
+			* to each pixel value after weighting is appled
+			* and add support for preserveAlpha bool
+			*/
+			function convolve3x3(framebuffer, convolutionMatrix, normalization) {
+				const neighborOffsets = [[-1, -1], [0, -1], [1, -1], [-1, 0], [0, 0], [1, 0], [-1, 1], [0, 1], [1, 1]];
+
+				const destinationBuffer = new ImageData(framebuffer.width, framebuffer.height);
+
+				for (let offset = 0, len = framebuffer.data.length; offset < len; offset += 4) {
+					const weightedNeighbors = [];
+					const currentPoint = offsetToPoint(offset, framebuffer.width);
+
+					for (let i = 0, len = neighborOffsets.length; i < len; i += 1) {
+						if (checkImageBounds(currentPoint.x + neighborOffsets[i][0], currentPoint.y + neighborOffsets[i][1], framebuffer.width, framebuffer.height)) {
+
+							const neighbor = getPixel(framebuffer, currentPoint.x + neighborOffsets[i][0], currentPoint.y + neighborOffsets[i][1]);
+
+							neighbor.r *= convolutionMatrix[i];
+							neighbor.g *= convolutionMatrix[i];
+							neighbor.b *= convolutionMatrix[i];
+							neighbor.a *= convolutionMatrix[i];
+
+							weightedNeighbors.push(neighbor);
+
+						}
+
+						else {
+							const clamped = clampToImageEdges(currentPoint.x + neighborOffsets[i][0], currentPoint.y + neighborOffsets[i][1], framebuffer.width, framebuffer.height);
+
+							const neighbor = getPixel(framebuffer, clamped.x, clamped.y);
+
+							neighbor.r *= convolutionMatrix[i];
+							neighbor.g *= convolutionMatrix[i];
+							neighbor.b *= convolutionMatrix[i];
+							neighbor.a *= convolutionMatrix[i];
+
+							weightedNeighbors.push(neighbor);
+						}
+					}
+					let r = weightedNeighbors.reduce((sum, n) => sum + n.r, 0);
+					let g = weightedNeighbors.reduce((sum, n) => sum + n.g, 0);
+					let b = weightedNeighbors.reduce((sum, n) => sum + n.b, 0);
+					let a = weightedNeighbors.reduce((sum, n) => sum + n.a, 0);
+
+					if (normalization) {
+						r = Math.floor(r / normalization);
+						g = Math.floor(g / normalization);
+						b = Math.floor(b / normalization);
+						a = Math.floor(a / normalization);
+					}
+
+					const p = new Pixel(r, g, b, a);
+
+
+					setPixel(destinationBuffer, p, currentPoint.x, currentPoint.y);
+
+				}
+
+				ctx.putImageData(destinationBuffer, 0, 0);
+
+
+			}
+
+
+			function imageData2RawArray(framebuffer) {
+				console.log(framebuffer.data.toString());
+			}
+
+
+ 
+			
+
+		</script>
+
+	</body>
+
+
+	</html>

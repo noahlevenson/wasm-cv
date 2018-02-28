@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+	<title>wasm-cv env</title>
+
+	<link rel="stylesheet" type="text/css" href="styles.css">
+
+</head>
+
+<body>
+
+	<!-- Here's the output canvas, coincidentally where output is displayed-->
+	<canvas id="output-canvas"></canvas> 
+
+	<!-- Here's our video element, used to grab input from the webcam -->
+	<video id="video" preload="auto" loop playsinline autoplay></video>
+
+	<br>
+
+	<!-- UI buttons and such -->
+	<button id="action" class="ui-button" onclick="start()">Start</button>
+	<button id="action" class="ui-button" onclick="stop()">Stop</button>
+
+	<br>
+
+	<p><input id="toGrayscale" type="checkbox" class="stack" name="grayscale">
+	<label for="toGrayscale">toGrayscale()</label></p>
+
+	<p><input id="binarize" type="checkbox" class="stack" name="binarize">
+	<label for="binarize">binarize(127)</label></p>
+
+	<p><input id="median3x3" type="checkbox" class="stack" name="median">
+	<label for="median3x3">median3x3()</label></p>
+
+	<p><input id="kDilate5x5" type="checkbox" class="stack" name="dilate">
+	<label for="kDilate5x5">kDilate5x5(_5x5iso)</label></p>
+
+	<p><input id="kErode5x5" type="checkbox" class="stack" name="erode">
+	<label for="kErode5x5">kErode5x5(_5x5iso)</label></p>
+
+	<p><input id="open5x5" type="checkbox" class="stack" name="open">
+	<label for="open5x5">open5x5(_5x5disc)</label></p>
+
+	<p><input id="close5x5" type="checkbox" class="stack" name="close">
+	<label for="close5x5">close5x5(_5x5disc)</label></p>
+
+	<p><input id="findEdges" type="checkbox" class="stack" name="edges">
+	<label for="findEdges">findEdges()</label></p>
+
+
+	<!-- Here's our input canvas, which is used as an intermediary between our video and our wasm functions-->
+	<canvas id="input-canvas"></canvas>
+
+	<!-- Include the wasm js glue code -->
+	<script src="wasm-cv.js"></script>
+
+	<!-- Include the js file that controls the behavior of this page -->
+	<script src="env.js"></script>
+
+</body>
+
+</html>

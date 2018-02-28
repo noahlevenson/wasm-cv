@@ -47,6 +47,8 @@ EMSCRIPTEN_KEEPALIVE unsigned char* erode(unsigned char inputBuf[], unsigned cha
 }
 
 // Binary dilation using a 3x3 structuring kernel
+// If dilation finds a black input pixel, then it ORs the entire structuring kernel, centered over the input pixel, to the output image
+// The effect is that black pixel regions "grow" in approximately the shape of the structuring kernel
 // TODO: Optimize this - there's a faster implementation
 unsigned char* kDilate3x3(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project, BinaryStructuringElement3x3 k) {
 	std::array<int, 9> o = project->offsets._3x3;
@@ -68,6 +70,8 @@ unsigned char* kDilate3x3(unsigned char inputBuf[], unsigned char outputBuf[], W
 }
 
 // Binary dilation using a 5x5 structuring kernel
+// If dilations finds a black input pixel, then it ORs the entire structuring kernel, centered over the input pixel, to the output image
+// The effect is that black pixel regions "grow" in approximately the shape of the structuring kernel
 // TODO: Optimize this - there's a faster implementation
 unsigned char* kDilate5x5(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project, BinaryStructuringElement5x5 k) {
 	std::array<int, 25> o = project->offsets._5x5;
@@ -89,6 +93,16 @@ unsigned char* kDilate5x5(unsigned char inputBuf[], unsigned char outputBuf[], W
 }
 
 // Binary erosion using a 3x3 structuring kernel
+// We center the structuring element over each input pixel and check whether every black pixel in the structuring element corresponds
+// to a black pixel in the image beneath it. If yes, then we OR the center value of our structuring element with our centered input pixel
+// The effect is that white pixel regions "grow" in approximately the shape of the structuring kernel
+// TODO: Instead of ORing output pixel with structuring kernel pixel per the spec, we're simply making output pixel = input pixel...
+// I think we get this for free as a result of predetermining that if structuring kernel is completely contained, and input pixel = 255,
+// then structuring kernel must also = 255...
+// case a: i = 255, k = 255 -- possible complete containment, output pixel should = 255
+// case b: i = 255, k = 0 -- possible complete containment, output pixel should = 255
+// case c: i = 0, k = 255 -- no complete containment, output pixel should = 0
+// case d: i = 0, k = 0 -- possible complete containment, output pixel should = 0
 // TODO: Optimize this - there's a faster implementation
 unsigned char* kErode3x3(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project, BinaryStructuringElement3x3 k) {
 	std::array<int, 9> o = project->offsets._3x3;
@@ -102,11 +116,7 @@ unsigned char* kErode3x3(unsigned char inputBuf[], unsigned char outputBuf[], Wa
 				hits += 1;
 			}
 		}
-		if (hits == k.positives) {
-			outputBuf[i] = inputBuf[i] == 255 || k.kernel[k.p0] == 255 ? 255 : 0;
-		} else {
-			outputBuf[i] = 0;
-		}
+		outputBuf[i] = hits == k.positives ? inputBuf[i] : 0;	
 	}
 	return outputBuf;
 }
@@ -125,11 +135,7 @@ unsigned char* kErode5x5(unsigned char inputBuf[], unsigned char outputBuf[], Wa
 				hits += 1;
 			}
 		}
-		if (hits == k.positives) {
-			outputBuf[i] = inputBuf[i] == 255 || k.kernel[k.p0] == 255 ? 255 : 0;
-		} else {
-			outputBuf[i] = 0;
-		}
+		outputBuf[i] = hits == k.positives ? inputBuf[i] : 0;
 	}
 	return outputBuf;
 }
