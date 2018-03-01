@@ -141,6 +141,8 @@ unsigned char* kErode5x5(unsigned char inputBuf[], unsigned char outputBuf[], Wa
 }
 
 // Find edges (simple)
+// Finds neighborhoods that are entirely black and replaces their p0 with a white value
+// the result is that deep black "fill" areas are turned white, while the edges of those fill areas are preserved as black
 EMSCRIPTEN_KEEPALIVE unsigned char* findEdges(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project) {
 	for (int i = 3; i < project->size; i += 4) {
 		int sigma = sumNeighbors(inputBuf, i, project->w);

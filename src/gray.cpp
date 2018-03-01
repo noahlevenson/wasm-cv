@@ -3,7 +3,7 @@ extern "C" {
 #endif
 
 // Threshold a grayscale image to binary
-EMSCRIPTEN_KEEPALIVE unsigned char* binarize(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project, int t) {
+EMSCRIPTEN_KEEPALIVE unsigned char* threshold(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project, int t) {
 	for (int i = 0; i < project->size; i += 4) {
 		outputBuf[i] = 0;
 		outputBuf[i + 1] = 0;
@@ -14,7 +14,7 @@ EMSCRIPTEN_KEEPALIVE unsigned char* binarize(unsigned char inputBuf[], unsigned 
 }
 
 // Simple adaptive thresholding using a 19x19 neighborhood sample, useful for binarizing print copy
-EMSCRIPTEN_KEEPALIVE unsigned char* binarizeOCR(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project) {
+EMSCRIPTEN_KEEPALIVE unsigned char* thresholdOCR(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project) {
 	std::array<int, 361> o = project->offsets._19x19;
 	const int minrange = 255 / 5; // This constant represents the minimum likely difference between foreground and background intensity
 	for (int i = 3; i < project->size; i += 4) {
@@ -35,24 +35,108 @@ EMSCRIPTEN_KEEPALIVE unsigned char* binarizeOCR(unsigned char inputBuf[], unsign
 	return outputBuf;
 }
 
+// Otsu's method for thresholding
+EMSCRIPTEN_KEEPALIVE unsigned char* otsu(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project) {
+	// Build a histogram of values for every pixel in the input image
+	unsigned char hist[256] = {0};
+	for (int i = 3; i < project->size; i += 4) {
+		hist[inputBuf[i]] += 1;
+	}
+
+	// Sum of foreground is the accumulated result of the weighted frequency of each luma level
+	float sumOfForeground = 0;
+	for (int t = 0; t < 256; t += 1) {
+		sumOfForeground += t * hist[t];
+	}
+
+	float sumOfBackground = 0;
+	int backgroundWeight = 0;
+	int foregroundWeight = 0;
+
+	float varMax = 0;
+	int thresh = 0;
+
+	int length = project->size / 4;
+
+	for (int t = 0; t < 256; t += 1) {
+		// This appears to be accumulating all the luma values distributed across the entire image?
+		backgroundWeight += hist[t];
+
+		// Foreground weight is the size of the image minus the total number of luma values distributed across the image?
+		foregroundWeight = length - backgroundWeight;
+
+
+		// Sum of background is the accumulated result of the weighted frequency of each luma level? Confusing!
+		sumOfBackground += t * hist[t];
+
+
+   		float mB = sumOfBackground / backgroundWeight;            			  // Mean Background
+   		
+   		float mF = (sumOfForeground - sumOfBackground) / foregroundWeight;    // Mean Foreground
+
+
+   		if (backgroundWeight != 0 && backgroundWeight != 1) {
+
+   			// This calculates the "between class" variance
+			float varBetween = float(backgroundWeight) * float(foregroundWeight) * (mB - mF) * (mB - mF);
+
+			// If a new maximum between class variance has been found, then set it as our new all-time-high
+	   		if (varBetween > varMax) {
+	      		varMax = varBetween;
+	      		thresh = t;
+   			}
+
+   			std::cout << varBetween << std::endl;
+
+   		}
+		
+	}
+	//std::cout << thresh << std::endl;
+
+	outputBuf = threshold(inputBuf, outputBuf, project, thresh);
+	return outputBuf;
+
+}
+
 // Median filter a grayscale image using a 3x3 neighborhood sample
 EMSCRIPTEN_KEEPALIVE unsigned char* median3x3(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project) {
 	std::array<int, 9> o = project->offsets._3x3;
+	unsigned char hist[9];
 	for (int i = 3; i < project->size; i += 4) {
-		unsigned char hist[9] = {0};
 		for (int j = 0; j < 9; j += 1){
 			hist[j] = inputBuf[i + o[j]];
 		}
-		std::sort(hist, hist + 9);
+		// This is a sorting network - using it instead of std::sort
+		// provides a speed boost of ~25ms/frame
+		if (hist[0] > hist[1]) std::swap(hist[0], hist[1]);
+		if (hist[3] > hist[4]) std::swap(hist[3], hist[4]);
+		if (hist[6] > hist[7]) std::swap(hist[6], hist[7]);
+		if (hist[1] > hist[2]) std::swap(hist[1], hist[2]);
+		if (hist[4] > hist[5]) std::swap(hist[4], hist[5]);
+		if (hist[7] > hist[8]) std::swap(hist[7], hist[8]);
+		if (hist[0] > hist[1]) std::swap(hist[0], hist[1]);
+		if (hist[3] > hist[4]) std::swap(hist[3], hist[4]);
+		if (hist[6] > hist[7]) std::swap(hist[6], hist[7]);
+		if (hist[2] > hist[5]) std::swap(hist[2], hist[5]);
+		if (hist[1] > hist[4]) std::swap(hist[1], hist[4]);
+		if (hist[3] > hist[6]) std::swap(hist[3], hist[6]);
+		if (hist[4] > hist[7]) std::swap(hist[4], hist[7]);
+		if (hist[2] > hist[5]) std::swap(hist[2], hist[5]);
+		if (hist[1] > hist[4]) std::swap(hist[1], hist[4]);
+		if (hist[2] > hist[6]) std::swap(hist[2], hist[6]);
+		if (hist[4] > hist[6]) std::swap(hist[4], hist[6]);
+		if (hist[2] > hist[4]) std::swap(hist[2], hist[4]);
+		// std::sort(hist, hist + 9);
 		outputBuf[i - 3] = 0;
 		outputBuf[i - 2] = 0;
 		outputBuf[i - 1] = 0;
-		outputBuf[i] = hist[5];
+	    outputBuf[i] = hist[4];
 	}
 	return outputBuf;
 }
 
 // Rank order filter a grayscale image using a 3x3 neighborhood sample
+// TODO: Make this use a sorting network instead of std::sort
 EMSCRIPTEN_KEEPALIVE unsigned char* rank3x3(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project, int r = 5) {
 	std::array<int, 9> o = project->offsets._3x3;
 	for (int i = 3; i < project->size; i += 4) {

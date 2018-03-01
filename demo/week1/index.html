@@ -28,8 +28,8 @@
 	<p><input id="toGrayscale" type="checkbox" class="stack" name="grayscale">
 	<label for="toGrayscale">toGrayscale()</label></p>
 
-	<p><input id="binarize" type="checkbox" class="stack" name="binarize">
-	<label for="binarize">binarize(127)</label></p>
+	<p><input id="threshold" type="checkbox" class="stack" name="threshold">
+	<label for="threshold">threshold(127)</label></p>
 
 	<p><input id="median3x3" type="checkbox" class="stack" name="median">
 	<label for="median3x3">median3x3()</label></p>
@@ -41,14 +41,13 @@
 	<label for="kErode5x5">kErode5x5(_5x5iso)</label></p>
 
 	<p><input id="open5x5" type="checkbox" class="stack" name="open">
-	<label for="open5x5">open5x5(_5x5disc)</label></p>
+	<label for="open5x5">open5x5(_5x5iso)</label></p>
 
 	<p><input id="close5x5" type="checkbox" class="stack" name="close">
-	<label for="close5x5">close5x5(_5x5disc)</label></p>
+	<label for="close5x5">close5x5(_5x5iso)</label></p>
 
 	<p><input id="findEdges" type="checkbox" class="stack" name="edges">
 	<label for="findEdges">findEdges()</label></p>
-
 
 	<!-- Here's our input canvas, which is used as an intermediary between our video and our wasm functions-->
 	<canvas id="input-canvas"></canvas>

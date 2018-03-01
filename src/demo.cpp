@@ -6,7 +6,7 @@ EMSCRIPTEN_KEEPALIVE unsigned char* morphStack(unsigned char inputBuf[], unsigne
 	unsigned char* buf1 = new unsigned char[project->size];
 	buf1 = toGrayscale(inputBuf, buf1, project);
 	unsigned char* buf2 = new unsigned char[project->size];
-	outputBuf = binarize(buf1, outputBuf, project);
+	outputBuf = threshold(buf1, outputBuf, project);
 	delete [] buf1;
 	return outputBuf;
 }
@@ -14,7 +14,7 @@ EMSCRIPTEN_KEEPALIVE unsigned char* morphStack(unsigned char inputBuf[], unsigne
 EMSCRIPTEN_KEEPALIVE unsigned char* ocr(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project) {
 	unsigned char* buf1 = new unsigned char[project->size];
 	buf1 = toGrayscale(inputBuf, buf1, project);
-	outputBuf = binarizeOCR(buf1, outputBuf, project);
+	outputBuf = thresholdOCR(buf1, outputBuf, project);
 	delete [] buf1;
 	return outputBuf;
 }
@@ -36,13 +36,12 @@ EMSCRIPTEN_KEEPALIVE unsigned char* demoErode5x5(unsigned char inputBuf[], unsig
 }
 
 EMSCRIPTEN_KEEPALIVE unsigned char* demoOpen5x5(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project) {
-	return open5x5(inputBuf, outputBuf, project, project->se._5x5disc);
+	return open5x5(inputBuf, outputBuf, project, project->se._5x5iso);
 }
 
 EMSCRIPTEN_KEEPALIVE unsigned char* demoClose5x5(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project) {
-	return close5x5(inputBuf, outputBuf, project, project->se._5x5disc);
+	return close5x5(inputBuf, outputBuf, project, project->se._5x5iso);
 }
-
 
 #ifdef __cplusplus
 }

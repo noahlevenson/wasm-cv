@@ -34,7 +34,7 @@ navigator.mediaDevices.getUserMedia({video : true}).then(function(stream) {
 
 // Get identifiers for all the proc stack checkboxes on the page
 let toGrayscale = document.getElementById("toGrayscale");
-let binarize = document.getElementById("binarize");
+let threshold = document.getElementById("threshold");
 let median = document.getElementById("median3x3");
 let dilate = document.getElementById("kDilate5x5");
 let erode = document.getElementById("kErode5x5");
@@ -61,8 +61,8 @@ function update() {
 	if (toGrayscale.checked) {
 		theStack.push(["toGrayscale"]);
 	}
-	if (binarize.checked) {
-		theStack.push(["binarize", 170]);
+	if (threshold.checked) {
+		theStack.push(["threshold", 127]);
 	}
 	if (median.checked) {
 		theStack.push(["median3x3"]);
