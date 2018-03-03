@@ -10,6 +10,7 @@ const webcamHeight = 480;
 
 // Identifiers for page elements
 const outputCanvas = document.getElementById("output-canvas");
+const outputOverlayCanvas = document.getElementById("output-overlay-canvas");
 const inputCanvas = document.getElementById("input-canvas");
 const video = document.getElementById("video");
 
@@ -17,11 +18,15 @@ const video = document.getElementById("video");
 outputCanvas.width = webcamWidth;
 outputCanvas.height = webcamHeight;
 
+outputOverlayCanvas.width = webcamWidth;
+outputOverlayCanvas.height = webcamHeight;
+
 inputCanvas.width = webcamWidth;
 inputCanvas.height = webcamHeight;
 
 // Grab canvas contexts
 const outputCtx = outputCanvas.getContext("2d");
+const outputOverlayCtx = outputOverlayCanvas.getContext("2d");
 const inputCtx = inputCanvas.getContext("2d");
 
 // Ask user's permission and then acess their webcam; getUserMedia() returns a promise that resolves 
@@ -82,7 +87,34 @@ function update() {
 	if (edges.checked) {
 		theStack.push(["findEdges"])
 	}
+
 	stack(inputBuf, outputBuf, theStack);
+	//Module.ccall("morphStack", "number", ["number", "number", "number"], [inputBuf, outputBuf, project]);
+
+	// remember: findAllCorners() must be applied to a binarized image, and it DOES NOT RETURN A MODIFIED OUTPUT BUFFER!!
+	const returnVal = Module.ccall("findAllCorners", "number", ["number", "number"], [outputBuf, project]);
+
+	outputOverlayCtx.clearRect(0, 0, 640, 480);
+
+	for (let i = 1, len = Module.HEAPU32[returnVal / Uint32Array.BYTES_PER_ELEMENT]; i < len; i += 1) {
+		// Note that we have to do our own pointer arithmetic!
+		let offset = Module.HEAPU32[returnVal / Uint32Array.BYTES_PER_ELEMENT + i];
+		//console.log(offset);
+
+		let pixelOffset = offset / 4;
+
+		let x = pixelOffset % webcamWidth;
+		let y = Math.floor(pixelOffset / webcamWidth);
+
+		//console.log(x + ", " + y);
+		outputOverlayCtx.beginPath();
+    	outputOverlayCtx.arc(x, y, 4, 0, 2 * Math.PI, false);
+    	outputOverlayCtx.fillStyle = 'yellow';
+    	outputOverlayCtx.fill();
+    	outputOverlayCtx.stroke();
+
+	}
+
 	// Create an empty output imagedata object from the output buffer
 	var outputImgData = new ImageData(inputImgData.width, inputImgData.height);
 	// iterate through the heap and copy our output buffer to the output imagedata object

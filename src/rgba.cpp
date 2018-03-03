@@ -146,6 +146,7 @@ EMSCRIPTEN_KEEPALIVE unsigned char* toGrayscale(unsigned char inputBuf[], unsign
 }
 
 // Median filter a color image
+// TODO: refactor to use sorting networks
 EMSCRIPTEN_KEEPALIVE unsigned char* medianRGBA(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project) {
 	std::array<int, 9> o = project->offsets._3x3;
 	int histR[256] = {0};

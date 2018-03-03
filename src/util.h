@@ -4,6 +4,7 @@ extern "C" {
 
 // Class declarations
 class NeighborhoodOffsets;
+class BinaryStructuringElement2x2;
 class BinaryStructuringElement3x3;
 class BinaryStructuringElement5x5;
 class Se;

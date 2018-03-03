@@ -2,10 +2,19 @@
 extern "C" {
 #endif
 
-// Class for a collection of pixel neighborhood linear offsets
+// Class for a collection of pixel neighborhood 1D offsets
 class NeighborhoodOffsets {
 	public:
 	NeighborhoodOffsets(int w) {
+		this->_4n[0] = -w * 4;
+		this->_4n[1] = -4;
+		this->_4n[2] = 0;
+		this->_4n[3] = 4;
+		this->_4n[4] = w * 4; 
+		this->_2x2[0] = 0;
+		this->_2x2[1] = 4;
+		this->_2x2[2] = w * 4;
+		this->_2x2[3] = w * 4 + 4;
 		for (int i = -1, idx = 0; i <= 1; i += 1) {
 			for (int j = -1; j <= 1; j += 1, idx += 1) {
 				this->_3x3[idx] = w * i * 4 + j * 4;
@@ -55,6 +64,8 @@ class NeighborhoodOffsets {
 	NeighborhoodOffsets() {
 
 	}
+	std::array<int, 5> _4n;
+	std::array<int, 4> _2x2;
 	std::array<int, 9> _3x3;
 	std::array<int, 25> _5x5;
 	std::array<int, 49> _7x7;
@@ -66,6 +77,33 @@ class NeighborhoodOffsets {
 	std::array<int, 361> _19x19;
 };
 
+// Class for a 2x2 binary structuring element
+class BinaryStructuringElement2x2 {
+	public:
+		BinaryStructuringElement2x2(std::array<unsigned char, 4> kernel) {
+			this->w = 2;
+			this->h = 2;
+			this->size = 4;
+			this->kernel = kernel;
+			this->origin = 0;
+			this->positives = 0;
+			for (int i = 0; i < 4; i += 1) {
+				if (kernel[i] == 255) {
+					this->positives += 1;
+				}
+			}
+		}
+		BinaryStructuringElement2x2() {
+
+		}
+		std::array<unsigned char, 4> kernel;
+		int w;
+		int h;
+		int size;
+		int positives;
+		int origin;
+};
+
 // Class for a 3x3 binary structuring element
 class BinaryStructuringElement3x3 {
 	public:
@@ -74,7 +112,7 @@ class BinaryStructuringElement3x3 {
 			this->h = 3;
 			this->size = 9;
 			this->kernel = kernel;
-			this->p0 = 4;
+			this->origin = 4;
 			this->positives = 0;
 			for (int i = 0; i < 9; i += 1) {
 				if (kernel[i] == 255) {
@@ -90,7 +128,7 @@ class BinaryStructuringElement3x3 {
 		int h;
 		int size;
 		int positives;
-		int p0;
+		int origin;
 };
 
 // Class for a 5x5 binary structuring element
@@ -101,7 +139,7 @@ class BinaryStructuringElement5x5 {
 			this->h = 5;
 			this->size = 25;
 			this->kernel = kernel;
-			this->p0 = 12;
+			this->origin = 12;
 			this->positives = 0;
 			for (int i = 0; i < 25; i += 1) {
 				if (kernel[i] == 255) {
@@ -117,7 +155,7 @@ class BinaryStructuringElement5x5 {
 		int h;
 		int size;
 		int positives;
-		int p0;
+		int origin;
 };
 
 // Static class for a library of structuring elements (used for morphological erosion, dilation, opening and closing)
@@ -132,7 +170,31 @@ class Se {
 			this->_5x5disc = BinaryStructuringElement5x5(_5x5disc);
 			std::array<unsigned char, 25> _5x5ring = {0, 255, 255, 255, 0, 255, 0, 0, 0, 255, 255, 0, 0, 0, 255, 255, 0, 0, 0, 255, 0, 255, 255, 255, 0};
 			this->_5x5ring = BinaryStructuringElement5x5(_5x5ring);
+			std::array<unsigned char, 4> _2x2eclr = {0, 0, 0, 255};
+			this->_2x2eclr = BinaryStructuringElement2x2(_2x2eclr);
+			std::array<unsigned char, 4> _2x2ecll = {0, 0, 255, 0};
+			this->_2x2ecll = BinaryStructuringElement2x2(_2x2ecll);
+			std::array<unsigned char, 4> _2x2ecul = {255, 0, 0, 0};
+			this->_2x2ecul = BinaryStructuringElement2x2(_2x2ecul);
+			std::array<unsigned char, 4> _2x2ecur = {0, 255, 0, 0};
+			this->_2x2ecur = BinaryStructuringElement2x2(_2x2ecur);
+			std::array<unsigned char, 4> _2x2icul = {255, 255, 255, 0};
+			this->_2x2icul = BinaryStructuringElement2x2(_2x2icul);
+			std::array<unsigned char, 4> _2x2icur = {255, 255, 0, 255};
+			this->_2x2icur = BinaryStructuringElement2x2(_2x2icur);
+			std::array<unsigned char, 4> _2x2icll = {255, 0, 255, 255};
+			this->_2x2icll = BinaryStructuringElement2x2(_2x2icll);
+			std::array<unsigned char, 4> _2x2iclr = {0, 255, 255, 255};
+			this->_2x2iclr = BinaryStructuringElement2x2(_2x2iclr);
 		}
+		BinaryStructuringElement2x2 _2x2eclr;
+		BinaryStructuringElement2x2 _2x2ecll;
+		BinaryStructuringElement2x2 _2x2ecul;
+		BinaryStructuringElement2x2 _2x2ecur;
+		BinaryStructuringElement2x2 _2x2icul;
+		BinaryStructuringElement2x2 _2x2icur;
+		BinaryStructuringElement2x2 _2x2icll;
+		BinaryStructuringElement2x2 _2x2iclr;
 		BinaryStructuringElement3x3 _3x3iso;
 		BinaryStructuringElement5x5 _5x5iso;
 		BinaryStructuringElement5x5 _5x5disc;

@@ -1,0 +1,66 @@
+label {
+	font-family: 'arial', 'helvetica', sans-serif;
+	font-size: 16px;
+}
+
+.stack {
+	margin-left: 20px;
+}
+
+#output {
+	width: 650px;
+	height: 490px;
+	display: inline-block;
+}
+
+#input {
+	width: 650px;
+	height: 490px;
+	display: inline-block;
+}
+
+#output-canvas {
+	width: 640px;
+	height: 480px;
+	border-width: 5px;
+	border-color: #000;
+	border-style: solid;
+	position: absolute;
+	z-index: 10;
+}
+
+#video {
+	width: 640;
+	height: 480px;
+	border-width: 5px;
+	border-color: #000;
+	border-style: solid;
+	position: absolute;
+	z-index: 10;
+}
+
+#output-overlay-canvas {
+	width: 640px;
+	height: 480px;
+	border-width: 5px;
+	/*border-color: #ffff00;*/
+	border-color: #000;
+	border-style: solid;
+	position: absolute;
+	z-index: 20;
+}
+
+#input-canvas {
+	width: 640px;
+	height: 480px;
+	display: none;
+}
+
+.ui-button {
+	margin: 10px;
+}
+
+.ui-text {
+	font-family: 'arial', 'helvetica', sans-serif;
+	margin-left: 20px;
+}

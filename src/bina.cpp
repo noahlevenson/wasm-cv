@@ -265,6 +265,113 @@ EMSCRIPTEN_KEEPALIVE unsigned char* topHat5x5Black(unsigned char inputBuf[], uns
 	return outputBuf;
 }
 
+// Determine whether an internal corner exists at a specified location via pattern matching
+// TODO: Eliminate the code repetition - we can iterate through the structuring elements using pointer arithmetic
+// also, another way to do this is to copy the input image's neighborhood to an array and then compare it to the
+// structuring element for equality
+EMSCRIPTEN_KEEPALIVE bool findCornerExternal(unsigned char inputBuf[], Wasmcv* project, int loc) {
+	std::array<int, 4> o = project->offsets._2x2;
+	int hits = 0;
+	for (int i = 0; i < 4; i += 1) {
+		if (inputBuf[loc + o[i]] == project->se._2x2ecul.kernel[i]) {
+			hits += 1;
+		}
+	}
+	if (hits == 4) {
+		return true;
+	}
+	hits = 0;
+	for (int i = 0; i < 4; i += 1) {
+		if (inputBuf[loc + o[i]] == project->se._2x2ecur.kernel[i]) {
+			hits += 1;
+		}
+	}
+	if (hits == 4) {
+		return true;
+	}
+	hits = 0;
+	for (int i = 0; i < 4; i += 1) {
+		if (inputBuf[loc + o[i]] == project->se._2x2ecll.kernel[i]) {
+			hits += 1;
+		}
+	}
+	if (hits == 4) {
+		return true;
+	}
+	hits = 0;
+	for (int i = 0; i < 4; i += 1) {
+		if (inputBuf[loc + o[i]] == project->se._2x2eclr.kernel[i]) {
+			hits += 1;
+		}
+	}
+	if (hits == 4) {
+		return true;
+	}
+	return false;
+}
+
+// Determine whether an external corner exists at a specified location via pattern matching
+// TODO: Eliminate the code repetition - we can iterate through the structuring elements using pointer arithmetic
+// also, another way to do this is to copy the input image's neighborhood to an array and then compare it to the
+// structuring element for equality
+EMSCRIPTEN_KEEPALIVE bool findCornerInternal(unsigned char inputBuf[], Wasmcv* project, int loc) {
+	std::array<int, 4> o = project->offsets._2x2;
+	int hits = 0;
+	for (int i = 0; i < 4; i += 1) {
+		if (inputBuf[loc + o[i]] == project->se._2x2icul.kernel[i]) {
+			hits += 1;
+		}
+	}
+	if (hits == 4) {
+		return true;
+	}
+	hits = 0;
+	for (int i = 0; i < 4; i += 1) {
+		if (inputBuf[loc + o[i]] == project->se._2x2icur.kernel[i]) {
+			hits += 1;
+		}
+	}
+	if (hits == 4) {
+		return true;
+	}
+	hits = 0;
+	for (int i = 0; i < 4; i += 1) {
+		if (inputBuf[loc + o[i]] == project->se._2x2icll.kernel[i]) {
+			hits += 1;
+		}
+	}
+	if (hits == 4) {
+		return true;
+	}
+	hits = 0;
+	for (int i = 0; i < 4; i += 1) {
+		if (inputBuf[loc + o[i]] == project->se._2x2iclr.kernel[i]) {
+			hits += 1;
+		}
+	}
+	if (hits == 4) {
+		return true;
+	}
+	return false;
+}
+
+// Find all internal and external corners via pattern matching
+// Returns a pointer to a raw array of offsets where element 0 = the length of the array
+// TODO: Optimization - it may be faster to create a very large raw array and simply not use all of it
+EMSCRIPTEN_KEEPALIVE uint32_t* findAllCorners(unsigned char inputBuf[], Wasmcv* project) {
+	std::vector<uint32_t> corners;
+	corners.push_back(0);
+	int len = 0;
+	for (int i = 3; i < project->size; i += 4) {
+		if (findCornerInternal(inputBuf, project, i) || findCornerExternal(inputBuf, project, i)) {
+			corners.push_back(i - 3);
+			len += 1;
+		} 
+	}
+	corners[0] = len;
+	return corners.data();
+}
+
 #ifdef __cplusplus
 }
 #endif
