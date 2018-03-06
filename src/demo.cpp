@@ -2,6 +2,18 @@
 extern "C" {
 #endif
 
+EMSCRIPTEN_KEEPALIVE unsigned char* segmentationStack(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project) {
+	unsigned char* buf1 = new unsigned char[project->size];
+	buf1 = toGrayscale(inputBuf, buf1, project);
+	unsigned char* buf2 = new unsigned char[project->size];
+	buf2 = threshold(buf1, buf2, project);
+	auto map = getConnectedComponents(buf2, project);
+	outputBuf = segmentationVisualizer(map, outputBuf, project);
+	delete [] buf1;
+	delete [] buf2;
+	return outputBuf;
+}
+
 EMSCRIPTEN_KEEPALIVE unsigned char* morphStack(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project) {
 	unsigned char* buf1 = new unsigned char[project->size];
 	buf1 = toGrayscale(inputBuf, buf1, project);

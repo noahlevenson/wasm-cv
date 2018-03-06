@@ -358,6 +358,8 @@ EMSCRIPTEN_KEEPALIVE bool findCornerInternal(unsigned char inputBuf[], Wasmcv* p
 // Find all internal and external corners via pattern matching
 // Returns a pointer to a raw array of offsets where element 0 = the length of the array
 // TODO: Optimization - it may be faster to create a very large raw array and simply not use all of it
+// ALSO TODO: The last column and row of a given image are incapable of posessing a corner, so we
+// should not bother operating on them
 EMSCRIPTEN_KEEPALIVE uint32_t* findAllCorners(unsigned char inputBuf[], Wasmcv* project) {
 	std::vector<uint32_t> corners;
 	corners.push_back(0);
@@ -370,6 +372,170 @@ EMSCRIPTEN_KEEPALIVE uint32_t* findAllCorners(unsigned char inputBuf[], Wasmcv* 
 	}
 	corners[0] = len;
 	return corners.data();
+}
+
+// Return the number of foreground objects as found via corner finding
+EMSCRIPTEN_KEEPALIVE int countForegroundObjects(unsigned char inputBuf[], Wasmcv* project) {
+	int e = 0;
+	int i = 0;
+	for (int i = 3; i < project->size; i += 4) {
+		if (findCornerInternal(inputBuf, project, i)) e += 1;
+		if (findCornerExternal(inputBuf, project, i)) i += 1;
+	}
+	return (e - i) / 4;
+}
+
+// Get conected components via recursive labeling (using 4-neighborhood) and return a segmentation map
+// TODO: This algorithm fails on large images (even 640x480) due to depth of recursion - delete it entirely?
+// TODO: is int16_t the most efficient data type? For wasm-cv functions that
+// return arrays, we should consider standardizing their return signature
+EMSCRIPTEN_KEEPALIVE int16_t* getConnectedComponentsRecursive(unsigned char inputBuf[], Wasmcv* project) {
+	// Create the segmentation map and initialize it with 0s
+	std::vector<int16_t> map(project->size, 0);
+	// Translate the input buffer to -1 and copy it to the segmentation map
+	for (int i = 3; i < project->size; i += 4) {
+		map[i] = inputBuf[i] == 255 ? -1 : 0;
+	}
+	// Identifier for the label # we'll assign and increment to segments we find
+	int label = 0;
+	// Loop through the whole segmentation map looking for -1 values...
+	for (int i = 3; i < project->size; i += 4) {
+		if (map[i] == -1) {
+			// If you find a pixel which has yet to be segmented and labeled,
+			// first increment your label # to get ready to start labeling...
+			label += 1;
+			searchConnected(project, map, label, i);
+		}
+	}
+	return map.data();
+}
+
+// Recursive function that searches 3x3 pixel neighborhoods for connected pixels
+void searchConnected(Wasmcv* project, std::vector<int16_t>& map, int label, int offset) {
+	// First, mark the origin pixel
+	map[offset] = label;
+	// Now loop through our neighbors
+	for (int i = 0; i < 5; i += 1) {
+		// First just check bounds
+		if (offset + project->offsets._4n[i] >= 0 && offset + project->offsets._4n[i] < project->size) {
+			// If we find a neighbor pixel that is connected, recurse the function
+			// on that neighbor pixel
+			if (map[offset + project->offsets._4n[i]] == -1) {
+				searchConnected(project, map, label, offset + project->offsets._4n[i]);
+			}
+		}
+	}
+}
+
+// Get connected components via union-find algorithm (using 4-neighborhood) and return a segmentation map
+// TODO: is int16_t the most efficient data type? For wasm-cv functions that
+// return arrays, we should consider standardizing their return signature
+EMSCRIPTEN_KEEPALIVE int16_t* getConnectedComponents(unsigned char inputBuf[], Wasmcv* project) {
+	// Init a global variable for our region labels
+	int label = 1;
+
+	// Init a disjoint set to keep track of our non-overlapping sets (which are discrete regions of connected pixels)
+	int disjointSet[1200] = {0};
+	//               ^ max number of segments we can label
+
+	// Init a segmentation map which is what we'll return to the user
+	std::vector<int16_t> map(project->size, 0);
+
+	// Pass 1/2 through our input image!
+	for (int i = 3; i < project->size; i += 4) {
+		// We only want to process this pixel if it is a foreground pixel
+		if (inputBuf[i] == 255) {
+			// First, we want to check if our north + west neighbors are already labeled with a value (indicating that they
+			// belong to a set), and if so, we'll grab those values
+			int16_t priorNeighborLabels[2] = {0};
+
+			// Neighbor pixel to the north
+			if (isInImageBounds(project, i + project->offsets._4n[0])) {
+				priorNeighborLabels[0] = map[i + project->offsets._4n[0]]; // should i actually find the parent node here?
+			}
+ 
+ 			// Neighbor pixel to the west
+			if (isInImageBounds(project, i + project->offsets._4n[1]) && ((i - 3) / 4) % project->w != 0) { 
+				priorNeighborLabels[1] = map[i + project->offsets._4n[1]]; // should i actually find the parent node here?
+			}
+
+			// Integer m will be the label for our output pixel...
+			int m;
+
+			// So if neither our north or west neighbor are already labeled with a value, then we figure that our current pixel
+			// is not connected to any known pixels, so we'll proceed by getting ready to assign a brand new value
+			if (priorNeighborLabels[0] == 0 && priorNeighborLabels[1] == 0) {
+				m = label;
+				label = label == 1199 ? 0 : label += 1;
+				//                ^ Corresponds to max number of segments in our disjoint set data structure
+			} else { 
+			// Otherwise, if either our north or west neighbor has a label, we want to use the smaller of the two possible labels
+			// But not a zero value! Zero is an init value and not a valid label value!
+				if (priorNeighborLabels[1] > priorNeighborLabels[0]) std::swap(priorNeighborLabels[0], priorNeighborLabels[1]);
+				m = priorNeighborLabels[0] == 0 ? priorNeighborLabels[1] : priorNeighborLabels[0];
+			}
+
+			// Now we have a label value we want to use, so let's assign it to our output pixel
+			map[i] = m;	
+
+			// Now we want to merge all of our neighbor pixels sets with the set of our current pixel (assuming that our current
+			// pixel is not receiving exactly the same label as one of our neighbors
+			// TODO: I think the bug is in here? For some reason, we're joining all of our sets together into one big set?
+			for (int j = 0; j < 2; j += 1) {
+				if (priorNeighborLabels[j] != 0 && priorNeighborLabels[j] != m) {
+					constructUnion(m, priorNeighborLabels[j], disjointSet);
+				}
+			}
+		}
+	}
+
+	// Pass 2/2 through our input image!
+	for (int i = 3; i < project->size; i += 4) {
+		// We only want to process this pixel if it is a foreground pixel
+		if (inputBuf[i] == 255) {
+			// Replace this pixel's label with the label of its parent node
+			map[i] = findParent(map[i], disjointSet);
+		}
+	}
+	return map.data();
+}
+
+// Implementation of find as part of the union-find algorithm
+// Traverse a disjoint set data strcture to find the parent node of a given value
+int findParent(int label, int disjointSet[]) {
+	while (disjointSet[label] != 0) {	
+		label = disjointSet[label];
+	}
+	return label;
+
+}
+// Implementation of union as part of the union-find algorithm
+// Given two values, find the non-overlapping sets that they belong to and join those two sets
+int* constructUnion(int labelX, int labelY, int disjointSet[]) {
+	// Find the parent of the first label
+	while (disjointSet[labelX] != 0) {
+		labelX = disjointSet[labelX];
+	}
+	// Find the parent of the second label
+	while (disjointSet[labelY] != 0) {
+		labelY = disjointSet[labelY];
+	}
+	if (labelX != labelY) {
+		disjointSet[labelY] = labelX;
+	}
+	return disjointSet;
+}
+
+// Visualize a segmentation map 
+// NOTE: For testing only, this will destroy your binary colorspace!
+EMSCRIPTEN_KEEPALIVE unsigned char* segmentationVisualizer(int16_t* map, unsigned char outputBuf[], Wasmcv* project) {
+	for (int i = 3; i < project->size; i += 4) {
+		outputBuf[i - 3] = 0;
+		outputBuf[i - 2] = 0;
+		outputBuf[i - 1] = 0;
+		outputBuf[i] = map[i];
+	}
+	return outputBuf;
 }
 
 #ifdef __cplusplus

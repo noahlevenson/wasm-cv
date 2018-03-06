@@ -270,6 +270,16 @@ EMSCRIPTEN_KEEPALIVE Wasmcv* init(int w, int h) {
 	return project;
 }
 
+// Check whether a given offset is within the image bounds of a
+// Wasmcv project
+EMSCRIPTEN_KEEPALIVE bool isInImageBounds(Wasmcv* project, int offset) {
+	if (offset >= 0 && offset < project->size) {
+		return true;
+	} else {
+		return false;
+	}
+}
+
 #ifdef __cplusplus
 }
 #endif

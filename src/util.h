@@ -14,6 +14,7 @@ class ImageBuffer;
 
 // Function prototypes
 EMSCRIPTEN_KEEPALIVE Wasmcv* init(int w, int h);
+EMSCRIPTEN_KEEPALIVE bool isInImageBounds(Wasmcv* project, int offset);
 
 #ifdef __cplusplus
 }
