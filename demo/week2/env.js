@@ -46,6 +46,10 @@ let erode = document.getElementById("kErode5x5");
 let open = document.getElementById("open5x5");
 let close = document.getElementById("close5x5");
 let edges = document.getElementById("findEdges");
+let corners = document.getElementById("findCorners");
+let segments = document.getElementById("findSegments");
+let segmentVisualizer = document.getElementById("visualizeSegments");
+let centroids = document.getElementById("findCentroids");
 
 // Main loop
 function update() {
@@ -88,31 +92,86 @@ function update() {
 		theStack.push(["findEdges"])
 	}
 
-	stack(inputBuf, outputBuf, theStack);
-	//Module.ccall("morphStack", "number", ["number", "number", "number"], [inputBuf, outputBuf, project]);
-
-	// remember: findAllCorners() must be applied to a binarized image, and it DOES NOT RETURN A MODIFIED OUTPUT BUFFER!!
-	const returnVal = Module.ccall("findAllCorners", "number", ["number", "number"], [outputBuf, project]);
+	// Disable the centroids + segment visualizer checkboxes
+	// because we cannot find centroids or visualize segments
+	// without first segmenting the image
+	centroids.disabled = true;
+	segmentVisualizer.disabled = true;
 
 	outputOverlayCtx.clearRect(0, 0, 640, 480);
+	
+	stack(inputBuf, outputBuf, theStack);
 
-	for (let i = 1, len = Module.HEAPU32[returnVal / Uint32Array.BYTES_PER_ELEMENT]; i < len; i += 1) {
-		// Note that we have to do our own pointer arithmetic!
-		let offset = Module.HEAPU32[returnVal / Uint32Array.BYTES_PER_ELEMENT + i];
-		//console.log(offset);
+	let segmentationMapPointer;
 
-		let pixelOffset = offset / 4;
+	if (!segments.checked) {
+		centroids.checked = false;
+	} else {
+		// Enable the centroids checkbox because we now have a segmentation map
+		centroids.disabled = false;
+		segmentVisualizer.disabled = false;
 
-		let x = pixelOffset % webcamWidth;
-		let y = Math.floor(pixelOffset / webcamWidth);
+		segmentationMapPointer = Module.ccall("getConnectedComponents", "number", ["number", "number"], [outputBuf, project]);	
+	}
 
-		//console.log(x + ", " + y);
-		outputOverlayCtx.beginPath();
-    	outputOverlayCtx.arc(x, y, 4, 0, 2 * Math.PI, false);
-    	outputOverlayCtx.fillStyle = 'yellow';
-    	outputOverlayCtx.fill();
-    	outputOverlayCtx.stroke();
+	if (segmentVisualizer.checked) {
+		// Draw the segmentation map to the output canvas
+		const visualized = new ImageData(640, 480);
+		const r = Math.random();
+		const g = Math.random();
+		const b = Math.random();
+		for (i = 3; i < 1228800; i += 4) {
+			visualized.data[i - 3] = Module.HEAP16[segmentationMapPointer / Int16Array.BYTES_PER_ELEMENT + i] * r;
+			visualized.data[i - 2] = Module.HEAP16[segmentationMapPointer / Int16Array.BYTES_PER_ELEMENT + i] * g;
+			visualized.data[i - 1] = Module.HEAP16[segmentationMapPointer / Int16Array.BYTES_PER_ELEMENT + i] * b;
+			visualized.data[i] = 255;
+		}
+		outputOverlayCtx.putImageData(visualized, 0, 0);
+	}
 
+	if (corners.checked) {
+		const cornerOffsets = Module.ccall("findAllCorners", "number", ["number", "number"], [outputBuf, project]);
+		for (let i = 1, len = Module.HEAPU32[cornerOffsets / Uint32Array.BYTES_PER_ELEMENT]; i < len; i += 1) {
+			// Note that we have to do our own pointer arithmetic!
+			let offset = Module.HEAPU32[cornerOffsets / Uint32Array.BYTES_PER_ELEMENT + i];
+			let pixelOffset = offset / 4;
+			let x = pixelOffset % webcamWidth;
+			let y = Math.floor(pixelOffset / webcamWidth);
+	    	// Draw nice pink cross marks to mark corners
+	    	outputOverlayCtx.strokeStyle = "#ff33cc";
+	    	outputOverlayCtx.lineWidth = 1;
+	    	outputOverlayCtx.beginPath();
+			outputOverlayCtx.moveTo(x, y - 11);
+			outputOverlayCtx.lineTo(x, y + 11);
+			outputOverlayCtx.stroke();
+			outputOverlayCtx.beginPath();
+			outputOverlayCtx.moveTo(x - 11, y);
+			outputOverlayCtx.lineTo(x + 11, y);
+			outputOverlayCtx.stroke();
+		}
+	}
+
+	if (centroids.checked) {
+		const allRegionCentroids = Module.ccall("getAllRegionCentroids", "number", ["number", "number", "number"], [segmentationMapPointer, 40, project]);
+		for (n = 0; n < 1200; n += 1) {
+			let offset = Module.HEAP32[allRegionCentroids / Uint32Array.BYTES_PER_ELEMENT + n];
+			if (offset !== 0) {
+				let pixelOffset = offset / 4;
+				let x = pixelOffset % webcamWidth;
+			 	let y = Math.floor(pixelOffset / webcamWidth);
+			 	// Draw a nice green cross to mark a centroid
+			 	outputOverlayCtx.strokeStyle = "#66ff33";
+			 	outputOverlayCtx.lineWidth = 6;
+		    	outputOverlayCtx.beginPath();
+				outputOverlayCtx.moveTo(x, y - 11);
+				outputOverlayCtx.lineTo(x, y + 11);
+				outputOverlayCtx.stroke();
+				outputOverlayCtx.beginPath();
+				outputOverlayCtx.moveTo(x - 11, y);
+				outputOverlayCtx.lineTo(x + 11, y);
+				outputOverlayCtx.stroke();
+			}
+		}
 	}
 
 	// Create an empty output imagedata object from the output buffer

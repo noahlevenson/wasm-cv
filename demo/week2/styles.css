@@ -1,3 +1,6 @@
+img {
+	display: none;
+}
 label {
 	font-family: 'arial', 'helvetica', sans-serif;
 	font-size: 16px;
@@ -5,6 +8,22 @@ label {
 
 .stack {
 	margin-left: 20px;
+	font-family: 'arial', 'helvetica', sans-serif;
+	font-size: 16px;
+	font-weight: bolder;
+}
+
+.stack-option {
+	margin-left: 40px;
+	font-family: 'arial', 'helvetica', sans-serif;
+	font-size: 16px;
+	font-weight: bolder;
+}
+
+.panel {
+	width: 400px;
+	display: inline-block;
+	vertical-align: top;
 }
 
 #output {

@@ -33,7 +33,10 @@ void searchConnected(Wasmcv* project, std::vector<int16_t>& map, int label, int 
 EMSCRIPTEN_KEEPALIVE int16_t* getConnectedComponents(unsigned char inputBuf[], Wasmcv* project);
 int findParent(int label, int unionFindStructure[]);
 int* constructUnion(int labelX, int labelY, int unionFindStructure[]);
-EMSCRIPTEN_KEEPALIVE unsigned char* segmentationVisualizer(int16_t* map, unsigned char outputBuf[], Wasmcv* project);
+EMSCRIPTEN_KEEPALIVE int getRegionArea(int16_t* map, int16_t label, Wasmcv* project);
+EMSCRIPTEN_KEEPALIVE uint32_t* getAllRegionAreas(int16_t* map, Wasmcv* project);
+EMSCRIPTEN_KEEPALIVE uint32_t* getRegionCentroid(int16_t* map, int16_t label, Wasmcv* project);
+EMSCRIPTEN_KEEPALIVE uint32_t* getAllRegionCentroids(int16_t* map, int areaThresh, Wasmcv* project);
 
 #ifdef __cplusplus
 }

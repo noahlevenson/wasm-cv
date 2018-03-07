@@ -356,7 +356,7 @@ EMSCRIPTEN_KEEPALIVE bool findCornerInternal(unsigned char inputBuf[], Wasmcv* p
 }
 
 // Find all internal and external corners via pattern matching
-// Returns a pointer to a raw array of offsets where element 0 = the length of the array
+// Returns a heap pointer (js type UInt32Array) to a wasm array of imgdata offsets where element 0 = the length of the array
 // TODO: Optimization - it may be faster to create a very large raw array and simply not use all of it
 // ALSO TODO: The last column and row of a given image are incapable of posessing a corner, so we
 // should not bother operating on them
@@ -410,7 +410,8 @@ EMSCRIPTEN_KEEPALIVE int16_t* getConnectedComponentsRecursive(unsigned char inpu
 	return map.data();
 }
 
-// Recursive function that searches 3x3 pixel neighborhoods for connected pixels
+// Recursive function used as part of getConnectedComponentsRecursive()
+// that searches 3x3 pixel neighborhoods for connected pixels
 void searchConnected(Wasmcv* project, std::vector<int16_t>& map, int label, int offset) {
 	// First, mark the origin pixel
 	map[offset] = label;
@@ -428,19 +429,18 @@ void searchConnected(Wasmcv* project, std::vector<int16_t>& map, int label, int 
 }
 
 // Get connected components via union-find algorithm (using 4-neighborhood) and return a segmentation map
+// A segmentation map is a 1:1 representation of an imagedata object but with region labels replacing positive pixel values
 // TODO: is int16_t the most efficient data type? For wasm-cv functions that
 // return arrays, we should consider standardizing their return signature
+// ALSO TODO: It can get awfully slow depending on what type of image it's working on - how can we optimize?
 EMSCRIPTEN_KEEPALIVE int16_t* getConnectedComponents(unsigned char inputBuf[], Wasmcv* project) {
 	// Init a global variable for our region labels
 	int label = 1;
-
 	// Init a disjoint set to keep track of our non-overlapping sets (which are discrete regions of connected pixels)
 	int disjointSet[1200] = {0};
 	//               ^ max number of segments we can label
-
 	// Init a segmentation map which is what we'll return to the user
 	std::vector<int16_t> map(project->size, 0);
-
 	// Pass 1/2 through our input image!
 	for (int i = 3; i < project->size; i += 4) {
 		// We only want to process this pixel if it is a foreground pixel
@@ -448,20 +448,16 @@ EMSCRIPTEN_KEEPALIVE int16_t* getConnectedComponents(unsigned char inputBuf[], W
 			// First, we want to check if our north + west neighbors are already labeled with a value (indicating that they
 			// belong to a set), and if so, we'll grab those values
 			int16_t priorNeighborLabels[2] = {0};
-
 			// Neighbor pixel to the north
 			if (isInImageBounds(project, i + project->offsets._4n[0])) {
 				priorNeighborLabels[0] = map[i + project->offsets._4n[0]]; // should i actually find the parent node here?
 			}
- 
  			// Neighbor pixel to the west
 			if (isInImageBounds(project, i + project->offsets._4n[1]) && ((i - 3) / 4) % project->w != 0) { 
 				priorNeighborLabels[1] = map[i + project->offsets._4n[1]]; // should i actually find the parent node here?
 			}
-
 			// Integer m will be the label for our output pixel...
 			int m;
-
 			// So if neither our north or west neighbor are already labeled with a value, then we figure that our current pixel
 			// is not connected to any known pixels, so we'll proceed by getting ready to assign a brand new value
 			if (priorNeighborLabels[0] == 0 && priorNeighborLabels[1] == 0) {
@@ -474,10 +470,8 @@ EMSCRIPTEN_KEEPALIVE int16_t* getConnectedComponents(unsigned char inputBuf[], W
 				if (priorNeighborLabels[1] > priorNeighborLabels[0]) std::swap(priorNeighborLabels[0], priorNeighborLabels[1]);
 				m = priorNeighborLabels[0] == 0 ? priorNeighborLabels[1] : priorNeighborLabels[0];
 			}
-
 			// Now we have a label value we want to use, so let's assign it to our output pixel
 			map[i] = m;	
-
 			// Now we want to merge all of our neighbor pixels sets with the set of our current pixel (assuming that our current
 			// pixel is not receiving exactly the same label as one of our neighbors
 			// TODO: I think the bug is in here? For some reason, we're joining all of our sets together into one big set?
@@ -488,7 +482,6 @@ EMSCRIPTEN_KEEPALIVE int16_t* getConnectedComponents(unsigned char inputBuf[], W
 			}
 		}
 	}
-
 	// Pass 2/2 through our input image!
 	for (int i = 3; i < project->size; i += 4) {
 		// We only want to process this pixel if it is a foreground pixel
@@ -526,16 +519,86 @@ int* constructUnion(int labelX, int labelY, int disjointSet[]) {
 	return disjointSet;
 }
 
-// Visualize a segmentation map 
-// NOTE: For testing only, this will destroy your binary colorspace!
-EMSCRIPTEN_KEEPALIVE unsigned char* segmentationVisualizer(int16_t* map, unsigned char outputBuf[], Wasmcv* project) {
+// Get the area of a region of pixels in a segmentation map
+// Returns the area as an integer
+EMSCRIPTEN_KEEPALIVE int getRegionArea(int16_t* map, int16_t label, Wasmcv* project) {
+	int area = 0;
 	for (int i = 3; i < project->size; i += 4) {
-		outputBuf[i - 3] = 0;
-		outputBuf[i - 2] = 0;
-		outputBuf[i - 1] = 0;
-		outputBuf[i] = map[i];
+		if (map[i] == label) {
+			area += 1;
+		}
 	}
-	return outputBuf;
+	return area;
+}
+
+// Get the area for all regions of pixels in a segmentation map
+// Returns an array of length 1200 (our hardcoded max number of image segments) where each index is
+// the area of its corresponding region
+EMSCRIPTEN_KEEPALIVE uint32_t* getAllRegionAreas(int16_t* map, Wasmcv* project) {
+ 	std::vector<uint32_t> hist(1200, 0);
+	for (int i = 3; i < project->size; i += 4) {
+		hist[map[i]] += 1;
+	}
+	return hist.data();
+}
+
+// Get region centroid for a labeled region in a segmentation map
+// Returns a heap pointer (js type UInt32Array) to a wasm array of size 2
+// index[0] == x coord
+// index[1] == y coord
+EMSCRIPTEN_KEEPALIVE uint32_t* getRegionCentroid(int16_t* map, int16_t label, Wasmcv* project) {
+	std::vector<uint32_t> centroid(2, 0);
+	long accumulatedX = 0;
+	long accumulatedY = 0;
+	int area = 0;
+	for (int i = 3; i < project->size; i += 4) {
+		if (map[i] == label) {
+			int pixelOffset = (i - 3) / 4;
+			int x = pixelOffset % project->w;
+	 		int y = pixelOffset / project->w;
+	 		accumulatedX += x;
+	 		accumulatedY += y;
+	 		area += 1;
+		}
+	}
+	centroid[0] = accumulatedX / area;
+	centroid[1] = accumulatedY / area;
+	return centroid.data();
+}
+
+// Get region centroids for all regions of pixels in a segmentation map
+// Returns a heap pointer (js type UInt32Array) to a wasm array of size 1200 
+// (our hardcoded max number of image segments) where each index corresponds to a region label
+// and each index holds the value of an imagedata offset representing the centroid of that region label
+// TODO: This is VERY inefficient because it converts from offset to x/y coords and then back again...
+// we should figure out a way to pass x/y coords back to javascript...
+EMSCRIPTEN_KEEPALIVE uint32_t* getAllRegionCentroids(int16_t* map, int areaThresh, Wasmcv* project) {
+	// Create an array of a length = our max number of image segments
+	std::vector<uint32_t> centroids(1200, 0);
+	long accumulatedX[1200] = {0};
+	long accumulatedY[1200] = {0};
+	int area[1200] = {0};
+	for (int i = 3; i < project->size; i += 4) {
+		// We loop through the image, accumulating the area and X/Y positions for each pixel in every labeled region
+		if (map[i] != 0) {
+			int pixelOffset = (i - 3) / 4;
+			int x = pixelOffset % project->w;
+	 		int y = pixelOffset / project->w;
+	 		accumulatedX[map[i]] += x;
+	 		accumulatedY[map[i]] += y;
+			area[map[i]] += 1;
+		}
+	}
+	// Now we loop through our returnable array, calculating the centroid for every labeled region
+	for (int i = 0; i < 1200; i += 1) {
+		if (area[i] > areaThresh) {
+			int avgX = accumulatedX[i] / area[i];
+			int avgY = accumulatedY[i] / area[i];
+			int offset = avgY * project->w * 4 + (avgX * 4);
+			centroids[i] = offset;
+		}
+	}
+	return centroids.data();
 }
 
 #ifdef __cplusplus
