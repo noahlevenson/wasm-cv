@@ -17,7 +17,7 @@ EMSCRIPTEN_KEEPALIVE unsigned char* lighten(unsigned char inputBuf[], unsigned c
 EMSCRIPTEN_KEEPALIVE unsigned char* darken(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project, int v);
 EMSCRIPTEN_KEEPALIVE unsigned char* contrast(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project, int g, int b);
 EMSCRIPTEN_KEEPALIVE unsigned char* toGrayscale(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project);
-EMSCRIPTEN_KEEPALIVE unsigned char* topHat3x3White(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project, BinaryStructuringElement3x3 k);
+EMSCRIPTEN_KEEPALIVE unsigned char* medianRGBA(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project);
 
 #ifdef __cplusplus
 }

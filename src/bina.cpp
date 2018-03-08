@@ -500,8 +500,8 @@ int findParent(int label, int disjointSet[]) {
 		label = disjointSet[label];
 	}
 	return label;
-
 }
+
 // Implementation of union as part of the union-find algorithm
 // Given two values, find the non-overlapping sets that they belong to and join those two sets
 int* constructUnion(int labelX, int labelY, int disjointSet[]) {
@@ -600,6 +600,40 @@ EMSCRIPTEN_KEEPALIVE uint32_t* getAllRegionCentroids(int16_t* map, int areaThres
 	}
 	return centroids.data();
 }
+
+// Get perimeter of a labeled region in a segmentation map
+// we'll try this one using the 4-neighborhood first
+EMSCRIPTEN_KEEPALIVE uint32_t* getRegionPerimeter(int16_t* map, int16_t label, Wasmcv* project) {
+	// First we need to collect offset locations for every pixel in the given region
+	std::vector<int16_t> region;
+	for (int i = 3; i < project->size; i += 4) {
+		if (map[i] == label) {
+			region.push_back(i); // We're pushing in the A byte of each pixel - be careful!
+		}
+	}
+
+	// Now we loop through every pixel in the given region 
+	for (int i = 0; i < region.size(); i += 1) {
+
+		// For the given pixel, let's get the set of labels belonging to its neighbors
+		std::vector<int16_t> neighborLabels;
+		for (int j = 0; j < 5; j += 1) {
+			if (isInImageBounds(project, region[i] + project->offsets._4n[j])) {
+				neighborLabels.push_back(map[i + project->offsets._4n[j]]);
+			}
+		}
+
+		// Now I think the idea is: if all of our input pixel's neighbors have the same label as
+		// our input pixel, then our input pixel is not a "border pixel" aka not a perimeter pixel,
+		// so we just forget about it and keep moving
+
+		// otherwise, if our input pixel had a neighbor with another value, then we'd push our 
+		// input pixel into a returnable array representing the locations of our perimeter pixels
+
+	}
+
+}
+
 
 #ifdef __cplusplus
 }

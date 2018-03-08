@@ -105,7 +105,6 @@ function update() {
 	let segmentationMapPointer;
 
 	if (!segments.checked) {
-		segmentVisualizer.checked = false;
 		centroids.checked = false;
 	} else {
 		// Enable the centroids checkbox because we now have a segmentation map
