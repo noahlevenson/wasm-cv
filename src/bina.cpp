@@ -547,7 +547,7 @@ EMSCRIPTEN_KEEPALIVE uint32_t* getAllRegionAreas(int16_t* map, Wasmcv* project) 
 // index[0] == x coord
 // index[1] == y coord
 EMSCRIPTEN_KEEPALIVE uint32_t* getRegionCentroid(int16_t* map, int16_t label, Wasmcv* project) {
-	std::vector<uint32_t> centroid(2, 0);
+	std::vector<uint32_t> centroid;
 	long accumulatedX = 0;
 	long accumulatedY = 0;
 	int area = 0;
@@ -561,8 +561,8 @@ EMSCRIPTEN_KEEPALIVE uint32_t* getRegionCentroid(int16_t* map, int16_t label, Wa
 	 		area += 1;
 		}
 	}
-	centroid[0] = accumulatedX / area;
-	centroid[1] = accumulatedY / area;
+	centroid.push_back(accumulatedX / area);
+	centroid.push_back(accumulatedY / area);
 	return centroid.data();
 }
 
