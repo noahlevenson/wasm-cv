@@ -92,15 +92,74 @@ function update() {
 		theStack.push(["findEdges"])
 	}
 
+	outputOverlayCtx.clearRect(0, 0, 640, 480);
+
+	stack(inputBuf, outputBuf, theStack);
+
+
+	// Let's segment the image and get a pointer to a segmentation map
+	const segMapPointer = Module.ccall("getConnectedComponents", "number", ["number", "number"], [outputBuf, project]);	
+
+	// Get the region label for whatever region is directly under the reticle
+	const targetLabel = Module.HEAP16[segMapPointer / Int16Array.BYTES_PER_ELEMENT + 615683]; 
+	// 																				   ^ offset for A byte @ the center of the screen
+	
+
+	if (targetLabel > 0) {
+
+		// Get the locations of all perimieter pixels of the region label located under the reticle
+		const perimeterPixelsPointer = Module.ccall("getRegionPerimeter", "number", ["number", "number", "number"], [segMapPointer, targetLabel, project]);
+
+		// Draw the perimeter pixels to the screen for a visualization
+		// First get the length of the perimeter pixel offsets array, which is stored in its index 0
+		let len = Module.HEAPU32[perimeterPixelsPointer / Uint32Array.BYTES_PER_ELEMENT];
+	
+
+		// Create a new imagedata object where we'll draw the perimeter
+		const perimeterVisualized = new ImageData(640, 480);
+	
+		// Loop through the perimeter pixels offsets and draw them to the imagedata object
+		for (let i = 1; i < len; i += 1) {
+
+			let offsetToPerimeterPixel = Module.HEAPU32[perimeterPixelsPointer / Uint32Array.BYTES_PER_ELEMENT + i];
+
+			//console.log(offsetToPerimeterPixel);
+
+			perimeterVisualized.data[offsetToPerimeterPixel] = 0;
+			perimeterVisualized.data[offsetToPerimeterPixel + 1] = 255;
+			perimeterVisualized.data[offsetToPerimeterPixel + 2] = 51;
+			perimeterVisualized.data[offsetToPerimeterPixel + 3] = 204;
+		}
+
+
+		// Draw the imagedata object to the canvas
+		outputOverlayCtx.putImageData(perimeterVisualized, 0, 0);
+
+	}
+
+
+	// Draw a reticle at screen center 
+	outputOverlayCtx.strokeStyle = "red";
+ 	outputOverlayCtx.lineWidth = 2;
+	outputOverlayCtx.beginPath();
+	outputOverlayCtx.moveTo(320, 230);
+	outputOverlayCtx.lineTo(320, 250);
+	outputOverlayCtx.stroke();
+	outputOverlayCtx.beginPath();
+	outputOverlayCtx.moveTo(310, 240);
+	outputOverlayCtx.lineTo(330, 240);
+	outputOverlayCtx.stroke();
+
+
+
+
+
+
 	// Disable the centroids + segment visualizer checkboxes
 	// because we cannot find centroids or visualize segments
 	// without first segmenting the image
 	centroids.disabled = true;
 	segmentVisualizer.disabled = true;
-
-	outputOverlayCtx.clearRect(0, 0, 640, 480);
-	
-	stack(inputBuf, outputBuf, theStack);
 
 	let segmentationMapPointer;
 

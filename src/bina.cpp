@@ -601,37 +601,41 @@ EMSCRIPTEN_KEEPALIVE uint32_t* getAllRegionCentroids(int16_t* map, int areaThres
 	return centroids.data();
 }
 
-// Get perimeter of a labeled region in a segmentation map
-// we'll try this one using the 4-neighborhood first
+// Get perimeter of a labeled region in a segmentation map using the 4-connected model
+// Returns a heap pointer (js type UInt32Array) to a wasm array of imgdata offsets where element 0 = the length of the array
 EMSCRIPTEN_KEEPALIVE uint32_t* getRegionPerimeter(int16_t* map, int16_t label, Wasmcv* project) {
+	// Init a vector to hold our returnable perimeter locations
+	std::vector<uint32_t> perimeter(1, 0);
 	// First we need to collect offset locations for every pixel in the given region
-	std::vector<int16_t> region;
+	std::vector<int32_t> region;
 	for (int i = 3; i < project->size; i += 4) {
 		if (map[i] == label) {
 			region.push_back(i); // We're pushing in the A byte of each pixel - be careful!
 		}
 	}
-
 	// Now we loop through every pixel in the given region 
 	for (int i = 0; i < region.size(); i += 1) {
-
 		// For the given pixel, let's get the set of labels belonging to its neighbors
 		std::vector<int16_t> neighborLabels;
 		for (int j = 0; j < 5; j += 1) {
 			if (isInImageBounds(project, region[i] + project->offsets._4n[j])) {
-				neighborLabels.push_back(map[i + project->offsets._4n[j]]);
+				neighborLabels.push_back(map[region[i] + project->offsets._4n[j]]);
 			}
 		}
-
-		// Now I think the idea is: if all of our input pixel's neighbors have the same label as
-		// our input pixel, then our input pixel is not a "border pixel" aka not a perimeter pixel,
-		// so we just forget about it and keep moving
-
-		// otherwise, if our input pixel had a neighbor with another value, then we'd push our 
-		// input pixel into a returnable array representing the locations of our perimeter pixels
-
+		// Now check if all of the set of labels belonging to our pixel's neighbors are
+		// the same label as our pixel
+		int value = label;
+		for (int j = 0; value == label && j < neighborLabels.size(); j += 1) {
+			value = neighborLabels[j];
+		}
+		// So if all of our neighbor labels != our pixel label, then our pixel is
+		// surrounded by more of its kind and is NOT a border pixel
+		if (value != label) {
+			perimeter.push_back(region[i] - 3); // We're pushing in the R byte of each pixel - watch this!
+		}
 	}
-
+	perimeter[0] = perimeter.size() - 1;
+	return perimeter.data();
 }
 
 

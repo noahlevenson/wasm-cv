@@ -37,6 +37,7 @@ EMSCRIPTEN_KEEPALIVE int getRegionArea(int16_t* map, int16_t label, Wasmcv* proj
 EMSCRIPTEN_KEEPALIVE uint32_t* getAllRegionAreas(int16_t* map, Wasmcv* project);
 EMSCRIPTEN_KEEPALIVE uint32_t* getRegionCentroid(int16_t* map, int16_t label, Wasmcv* project);
 EMSCRIPTEN_KEEPALIVE uint32_t* getAllRegionCentroids(int16_t* map, int areaThresh, Wasmcv* project);
+EMSCRIPTEN_KEEPALIVE uint32_t* getRegionPerimeter(int16_t* map, int16_t label, Wasmcv* project);
 
 #ifdef __cplusplus
 }
