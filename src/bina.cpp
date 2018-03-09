@@ -628,7 +628,7 @@ EMSCRIPTEN_KEEPALIVE uint32_t* getRegionPerimeter(int16_t* map, int16_t label, W
 		for (int j = 0; value == label && j < neighborLabels.size(); j += 1) {
 			value = neighborLabels[j];
 		}
-		// So if all of our neighbor labels != our pixel label, then our pixel is
+		// So if all of our neighbor labels == our pixel label, then our pixel is
 		// surrounded by more of its kind and is NOT a border pixel
 		if (value != label) {
 			perimeter.push_back(region[i] - 3); // We're pushing in the R byte of each pixel - watch this!

@@ -50,6 +50,7 @@ let corners = document.getElementById("findCorners");
 let segments = document.getElementById("findSegments");
 let segmentVisualizer = document.getElementById("visualizeSegments");
 let centroids = document.getElementById("findCentroids");
+let perimeter = document.getElementById("findPerimeter");
 
 // Main loop
 function update() {
@@ -96,65 +97,106 @@ function update() {
 
 	stack(inputBuf, outputBuf, theStack);
 
-
 	// Let's segment the image and get a pointer to a segmentation map
 	const segMapPointer = Module.ccall("getConnectedComponents", "number", ["number", "number"], [outputBuf, project]);	
 
-	// Get the region label for whatever region is directly under the reticle
-	const targetLabel = Module.HEAP16[segMapPointer / Int16Array.BYTES_PER_ELEMENT + 615683]; 
-	// 																				   ^ offset for A byte @ the center of the screen
-	
+	if (perimeter.checked) {
 
-	if (targetLabel > 0) {
+		// Get the region label for whatever region is directly under the reticle
+		const targetLabel = Module.HEAP16[segMapPointer / Int16Array.BYTES_PER_ELEMENT + 615683]; 
+		// 	 																			    ^ offset for A byte @ the center of the screen
+		
+		if (targetLabel > 0) {
+			// Get the centroid for the region under the reticle
+			let targetCentroid = Module.ccall("getRegionCentroid", "number", ["number", "number", "number"], [segMapPointer, targetLabel, project]);
 
-		// Get the locations of all perimieter pixels of the region label located under the reticle
-		const perimeterPixelsPointer = Module.ccall("getRegionPerimeter", "number", ["number", "number", "number"], [segMapPointer, targetLabel, project]);
+			let centroidX = Module.HEAPU32[targetCentroid / Uint32Array.BYTES_PER_ELEMENT];
+			let centroidY = Module.HEAPU32[targetCentroid / Uint32Array.BYTES_PER_ELEMENT + 1];
 
-		// Draw the perimeter pixels to the screen for a visualization
-		// First get the length of the perimeter pixel offsets array, which is stored in its index 0
-		let len = Module.HEAPU32[perimeterPixelsPointer / Uint32Array.BYTES_PER_ELEMENT];
-	
+			// Get the area for the region under the reticle
+			let targetArea = Module.ccall("getRegionArea", "number", ["number", "number", "number"], [segMapPointer, targetLabel, project]);
 
-		// Create a new imagedata object where we'll draw the perimeter
-		const perimeterVisualized = new ImageData(640, 480);
-	
-		// Loop through the perimeter pixels offsets and draw them to the imagedata object
-		for (let i = 1; i < len; i += 1) {
+			// Get the locations of all perimieter pixels of the region label located under the reticle
+			const perimeterPixelsPointer = Module.ccall("getRegionPerimeter", "number", ["number", "number", "number"], [segMapPointer, targetLabel, project]);
 
-			let offsetToPerimeterPixel = Module.HEAPU32[perimeterPixelsPointer / Uint32Array.BYTES_PER_ELEMENT + i];
+			// First get the length of the perimeter pixel offsets array, which is stored in its index 0
+			let len = Module.HEAPU32[perimeterPixelsPointer / Uint32Array.BYTES_PER_ELEMENT];
 
-			//console.log(offsetToPerimeterPixel);
+			// Let's find the distances from centroid to each perimeter pixel and store them in an array
+			let distances = [];
+			for (let i = 1; i < len; i += 1) {
+				let offsetToPerimeterPixel = Module.HEAPU32[perimeterPixelsPointer / Uint32Array.BYTES_PER_ELEMENT + i];
 
-			perimeterVisualized.data[offsetToPerimeterPixel] = 0;
-			perimeterVisualized.data[offsetToPerimeterPixel + 1] = 255;
-			perimeterVisualized.data[offsetToPerimeterPixel + 2] = 51;
-			perimeterVisualized.data[offsetToPerimeterPixel + 3] = 204;
+				// We need to convert our perimeter pixel imgdata offset to an x/y pair
+				let pixelOffset = offsetToPerimeterPixel / 4;
+				let x = pixelOffset % webcamWidth;
+				let y = Math.floor(pixelOffset / webcamWidth);
+
+		 		// Now you have x/y pairs for the centroid and for the current perimeter pixel...
+		 		// how do we measure the distance between them? The formula for Euclidean distance, that's how!
+		 		const d = Math.sqrt(Math.pow((x - centroidX), 2) + Math.pow((y - centroidY), 2));
+		 		distances.push(d);
+			}
+
+			// Now we can calculate mean radial distance like so
+			const meanRadDist = distances.reduce((a, c) => a + c, 0) / distances.length;
+
+			// Now let's calculate standard deviation of radial distance
+			const mapped = distances.map(x => Math.pow(x - meanRadDist, 2));
+			const sdrd = mapped.reduce((a, c) => a + c, 0) / mapped.length;
+
+			// Haralick's method for measurement of circularity is mean radial distance divided 
+			// by standard deviation of radial distance
+			const circularity = meanRadDist / sdrd;
+		
+			// Now I want to draw a visualization of the perimeter to the screen
+			// Create a new imagedata object where we'll draw the perimeter
+			const perimeterVisualized = new ImageData(640, 480);
+		
+			// Loop through the perimeter pixels offsets and draw them to the imagedata object
+			for (let i = 1; i < len; i += 1) {
+				let offsetToPerimeterPixel = Module.HEAPU32[perimeterPixelsPointer / Uint32Array.BYTES_PER_ELEMENT + i];
+				perimeterVisualized.data[offsetToPerimeterPixel] = 102;
+				perimeterVisualized.data[offsetToPerimeterPixel + 1] = 255;
+				perimeterVisualized.data[offsetToPerimeterPixel + 2] = 51;
+				perimeterVisualized.data[offsetToPerimeterPixel + 3] = 255;
+			}
+			// Draw the imagedata object to the canvas
+			outputOverlayCtx.putImageData(perimeterVisualized, 0, 0);
+
+			// Draw a green cross to mark our detected centroid
+		 	outputOverlayCtx.strokeStyle = "#66ff33";
+		 	outputOverlayCtx.lineWidth = 6;
+			outputOverlayCtx.beginPath();
+			outputOverlayCtx.moveTo(centroidX, centroidY - 11);
+			outputOverlayCtx.lineTo(centroidX, centroidY + 11);
+			outputOverlayCtx.stroke();
+			outputOverlayCtx.beginPath();
+			outputOverlayCtx.moveTo(centroidX - 11, centroidY);
+			outputOverlayCtx.lineTo(centroidX + 11, centroidY);
+			outputOverlayCtx.stroke();
+
+			// Output some cool data to the canvas
+			outputOverlayCtx.font = "30px Arial";
+			outputOverlayCtx.fillStyle = "#66ff33";
+			outputOverlayCtx.fillText("region # " + targetLabel, centroidX + 40, centroidY -120);
+			outputOverlayCtx.fillText("area: " + targetArea, centroidX + 40, centroidY -80);
+			outputOverlayCtx.fillText("circularity: " + circularity.toFixed(2), centroidX + 40, centroidY - 40);
 		}
 
-
-		// Draw the imagedata object to the canvas
-		outputOverlayCtx.putImageData(perimeterVisualized, 0, 0);
-
+			// Draw a reticle at screen center 
+			outputOverlayCtx.strokeStyle = "red";
+		 	outputOverlayCtx.lineWidth = 2;
+			outputOverlayCtx.beginPath();
+			outputOverlayCtx.moveTo(320, 230);
+			outputOverlayCtx.lineTo(320, 250);
+			outputOverlayCtx.stroke();
+			outputOverlayCtx.beginPath();
+			outputOverlayCtx.moveTo(310, 240);
+			outputOverlayCtx.lineTo(330, 240);
+			outputOverlayCtx.stroke();
 	}
-
-
-	// Draw a reticle at screen center 
-	outputOverlayCtx.strokeStyle = "red";
- 	outputOverlayCtx.lineWidth = 2;
-	outputOverlayCtx.beginPath();
-	outputOverlayCtx.moveTo(320, 230);
-	outputOverlayCtx.lineTo(320, 250);
-	outputOverlayCtx.stroke();
-	outputOverlayCtx.beginPath();
-	outputOverlayCtx.moveTo(310, 240);
-	outputOverlayCtx.lineTo(330, 240);
-	outputOverlayCtx.stroke();
-
-
-
-
-
-
+																				  
 	// Disable the centroids + segment visualizer checkboxes
 	// because we cannot find centroids or visualize segments
 	// without first segmenting the image
@@ -213,7 +255,7 @@ function update() {
 	if (centroids.checked) {
 		const allRegionCentroids = Module.ccall("getAllRegionCentroids", "number", ["number", "number", "number"], [segmentationMapPointer, 40, project]);
 		for (n = 0; n < 1200; n += 1) {
-			let offset = Module.HEAP32[allRegionCentroids / Uint32Array.BYTES_PER_ELEMENT + n];
+			let offset = Module.HEAPU32[allRegionCentroids / Uint32Array.BYTES_PER_ELEMENT + n];
 			if (offset !== 0) {
 				let pixelOffset = offset / 4;
 				let x = pixelOffset % webcamWidth;
