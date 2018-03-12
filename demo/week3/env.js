@@ -51,6 +51,7 @@ let segments = document.getElementById("findSegments");
 let segmentVisualizer = document.getElementById("visualizeSegments");
 let centroids = document.getElementById("findCentroids");
 let perimeter = document.getElementById("findPerimeter");
+let bounding = document.getElementById("findBoundingBox");
 
 // Main loop
 function update() {
@@ -102,19 +103,22 @@ function update() {
 
 	if (perimeter.checked) {
 
+		// Enable the ability to get bounding box
+		bounding.disabled = false;
+
 		// Get the region label for whatever region is directly under the reticle
 		const targetLabel = Module.HEAP16[segMapPointer / Int16Array.BYTES_PER_ELEMENT + 615683]; 
 		// 	 																			    ^ offset for A byte @ the center of the screen
 		
 		if (targetLabel > 0) {
 			// Get the centroid for the region under the reticle
-			let targetCentroid = Module.ccall("getRegionCentroid", "number", ["number", "number", "number"], [segMapPointer, targetLabel, project]);
+			const targetCentroid = Module.ccall("getRegionCentroid", "number", ["number", "number", "number"], [segMapPointer, targetLabel, project]);
 
-			let centroidX = Module.HEAPU32[targetCentroid / Uint32Array.BYTES_PER_ELEMENT];
-			let centroidY = Module.HEAPU32[targetCentroid / Uint32Array.BYTES_PER_ELEMENT + 1];
+			const centroidX = Module.HEAPU32[targetCentroid / Uint32Array.BYTES_PER_ELEMENT];
+			const centroidY = Module.HEAPU32[targetCentroid / Uint32Array.BYTES_PER_ELEMENT + 1];
 
 			// Get the area for the region under the reticle
-			let targetArea = Module.ccall("getRegionArea", "number", ["number", "number", "number"], [segMapPointer, targetLabel, project]);
+			const targetArea = Module.ccall("getRegionArea", "number", ["number", "number", "number"], [segMapPointer, targetLabel, project]);
 
 			// Get the locations of all perimieter pixels of the region label located under the reticle
 			const perimeterPixelsPointer = Module.ccall("getRegionPerimeter", "number", ["number", "number", "number"], [segMapPointer, targetLabel, project]);
@@ -176,6 +180,23 @@ function update() {
 			outputOverlayCtx.lineTo(centroidX + 11, centroidY);
 			outputOverlayCtx.stroke();
 
+			// Experimental: get bounding box
+			if (bounding.checked) {
+				const boundingBoxPointer = Module.ccall("getBoundingBox", "number", ["number", "number"], [perimeterPixelsPointer, project]);
+
+				const boundingBoxX = Module.HEAPU32[boundingBoxPointer / Uint32Array.BYTES_PER_ELEMENT];
+				const boundingBoxY = Module.HEAPU32[boundingBoxPointer / Uint32Array.BYTES_PER_ELEMENT + 1];
+				const boundingBoxW = Module.HEAPU32[boundingBoxPointer / Uint32Array.BYTES_PER_ELEMENT + 2];
+				const boundingBoxH = Module.HEAPU32[boundingBoxPointer / Uint32Array.BYTES_PER_ELEMENT + 3];
+
+				// Experimental: Draw a bounding box!
+				outputOverlayCtx.strokeStyle = "#005ce6";
+				outputOverlayCtx.lineWidth = 4;
+				outputOverlayCtx.beginPath();
+				outputOverlayCtx.rect(boundingBoxX, boundingBoxY, boundingBoxW, boundingBoxH);
+				outputOverlayCtx.stroke();
+			}
+
 			// Output some cool data to the canvas
 			outputOverlayCtx.font = "30px Arial";
 			outputOverlayCtx.fillStyle = "#66ff33";
@@ -195,6 +216,9 @@ function update() {
 			outputOverlayCtx.moveTo(310, 240);
 			outputOverlayCtx.lineTo(330, 240);
 			outputOverlayCtx.stroke();
+	} else {
+		bounding.checked = false;
+		bounding.disabled = true;
 	}
 																				  
 	// Disable the centroids + segment visualizer checkboxes

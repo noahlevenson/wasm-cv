@@ -3,7 +3,7 @@
 *
 * source ./emsdk_env.sh --build=Release
 *
-* emcc wasm-cv.cpp -s TOTAL_MEMORY=512MB -s "EXTRA_EXPORTED_RUNTIME_METHODS=['ccall', 'cwrap']" -s WASM=1 -O3 -std=c++1z -o ../demo/week3/wasm-cv.js
+* emcc wasm-cv.cpp -s TOTAL_MEMORY=1024MB -s "EXTRA_EXPORTED_RUNTIME_METHODS=['ccall', 'cwrap']" -s WASM=1 -O3 -std=c++1z -o ../demo/week3/wasm-cv.js
 */
 
 #include <iostream>

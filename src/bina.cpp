@@ -521,7 +521,7 @@ int* constructUnion(int labelX, int labelY, int disjointSet[]) {
 
 // Get the area of a region of pixels in a segmentation map
 // Returns the area as an integer
-EMSCRIPTEN_KEEPALIVE int getRegionArea(int16_t* map, int16_t label, Wasmcv* project) {
+EMSCRIPTEN_KEEPALIVE int getRegionArea(int16_t map[], int16_t label, Wasmcv* project) {
 	int area = 0;
 	for (int i = 3; i < project->size; i += 4) {
 		if (map[i] == label) {
@@ -534,7 +534,7 @@ EMSCRIPTEN_KEEPALIVE int getRegionArea(int16_t* map, int16_t label, Wasmcv* proj
 // Get the area for all regions of pixels in a segmentation map
 // Returns an array of length 1200 (our hardcoded max number of image segments) where each index is
 // the area of its corresponding region
-EMSCRIPTEN_KEEPALIVE uint32_t* getAllRegionAreas(int16_t* map, Wasmcv* project) {
+EMSCRIPTEN_KEEPALIVE uint32_t* getAllRegionAreas(int16_t map[], Wasmcv* project) {
  	std::vector<uint32_t> hist(1200, 0);
 	for (int i = 3; i < project->size; i += 4) {
 		hist[map[i]] += 1;
@@ -544,9 +544,9 @@ EMSCRIPTEN_KEEPALIVE uint32_t* getAllRegionAreas(int16_t* map, Wasmcv* project) 
 
 // Get region centroid for a labeled region in a segmentation map
 // Returns a heap pointer (js type UInt32Array) to a wasm array of size 2
-// index[0] == x coord
-// index[1] == y coord
-EMSCRIPTEN_KEEPALIVE uint32_t* getRegionCentroid(int16_t* map, int16_t label, Wasmcv* project) {
+// return[0] == x coord
+// return[1] == y coord
+EMSCRIPTEN_KEEPALIVE uint32_t* getRegionCentroid(int16_t map[], int16_t label, Wasmcv* project) {
 	std::vector<uint32_t> centroid;
 	long accumulatedX = 0;
 	long accumulatedY = 0;
@@ -572,7 +572,7 @@ EMSCRIPTEN_KEEPALIVE uint32_t* getRegionCentroid(int16_t* map, int16_t label, Wa
 // and each index holds the value of an imagedata offset representing the centroid of that region label
 // TODO: This is VERY inefficient because it converts from offset to x/y coords and then back again...
 // we should figure out a way to pass x/y coords back to javascript...
-EMSCRIPTEN_KEEPALIVE uint32_t* getAllRegionCentroids(int16_t* map, int areaThresh, Wasmcv* project) {
+EMSCRIPTEN_KEEPALIVE uint32_t* getAllRegionCentroids(int16_t map[], int areaThresh, Wasmcv* project) {
 	// Create an array of a length = our max number of image segments
 	std::vector<uint32_t> centroids(1200, 0);
 	long accumulatedX[1200] = {0};
@@ -602,8 +602,9 @@ EMSCRIPTEN_KEEPALIVE uint32_t* getAllRegionCentroids(int16_t* map, int areaThres
 }
 
 // Get perimeter of a labeled region in a segmentation map using the 4-connected model
-// Returns a heap pointer (js type UInt32Array) to a wasm array of imgdata offsets where element 0 = the length of the array
-EMSCRIPTEN_KEEPALIVE uint32_t* getRegionPerimeter(int16_t* map, int16_t label, Wasmcv* project) {
+// Returns a perimeter map as a heap pointer (js type UInt32Array) to a wasm array of imgdata 
+// offsets where element 0 = the length of the array
+EMSCRIPTEN_KEEPALIVE uint32_t* getRegionPerimeter(int16_t map[], int16_t label, Wasmcv* project) {
 	// Init a vector to hold our returnable perimeter locations
 	std::vector<uint32_t> perimeter(1, 0);
 	// First we need to collect offset locations for every pixel in the given region
@@ -636,6 +637,51 @@ EMSCRIPTEN_KEEPALIVE uint32_t* getRegionPerimeter(int16_t* map, int16_t label, W
 	}
 	perimeter[0] = perimeter.size() - 1;
 	return perimeter.data();
+}
+
+// Get bounding box coords for a given map of perimeter pixels
+// Returns a heap pointer (js type UInt32Array) to a wasm array of size 4
+// return[0] == x coord
+// return[1] == y coord
+// return[2] == width
+// return[3] == height
+EMSCRIPTEN_KEEPALIVE uint32_t* getBoundingBox(uint32_t perimeterMap[], Wasmcv* project) {
+	// The big idea: we need to look into a group of perimeter pixels to find 
+	// the smallest X value (leftmost bound), largest X value (rightmost bound),
+	// smallest Y (topmost bound) and largest Y (bottommost bound)
+
+	// I imagined a more elegant way to do this, but I was experiencing compiler bug-like
+	// symptoms (silent, weird evidence of unexpected memory access behavior)
+	// when assigning a value in a heap array to a vector
+
+	// Get the length of the perimeter pixels map
+	uint32_t len = perimeterMap[0];
+
+	// Get initial values for the min/max
+	int pixelOffset = perimeterMap[1] / 4;
+	int xMax, xMin = pixelOffset % project->w;
+	int yMax, yMin = pixelOffset / project->w;
+
+	// Init the returnable vector
+	std::vector<uint32_t> boundingBox;
+
+	// Loop through our perimeter pixels evaluating for min/max
+	for (int i = 2; i < len; i += 1) {
+		int pixelOffset = perimeterMap[i] / 4;
+		int x = pixelOffset % project->w;
+	 	int y = pixelOffset / project->w;
+	 	if (x > xMax) xMax = x;
+	 	if (x < xMin) xMin = x;
+	 	if (y > yMax) yMax = y;
+	 	if (y < yMin) yMin = y;
+	}
+
+	boundingBox.push_back(xMin);
+	boundingBox.push_back(yMin);
+	boundingBox.push_back(xMax - xMin);
+	boundingBox.push_back(yMax - yMin);
+
+	return boundingBox.data();
 }
 
 

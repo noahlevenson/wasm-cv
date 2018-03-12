@@ -5,3 +5,5 @@ This week:
 - Blob analysis: Calculating mean radial distance and standard deviation of radial distance
 
 - Higher level interpretation of data: measuring circularity
+
+- Getting region bounding box
