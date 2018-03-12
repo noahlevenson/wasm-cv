@@ -1,3 +1,5 @@
+#include <emscripten/emscripten.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -39,6 +41,7 @@ EMSCRIPTEN_KEEPALIVE uint32_t* getRegionCentroid(int16_t map[], int16_t label, W
 EMSCRIPTEN_KEEPALIVE uint32_t* getAllRegionCentroids(int16_t map[], int areaThresh, Wasmcv* project);
 EMSCRIPTEN_KEEPALIVE uint32_t* getRegionPerimeter(int16_t map[], int16_t label, Wasmcv* project);
 EMSCRIPTEN_KEEPALIVE uint32_t* getBoundingBox(uint32_t perimeterMap[], Wasmcv* project);
+EMSCRIPTEN_KEEPALIVE int getExtremalAxisLength(int x1, int y1, int x2, int y2);
 
 #ifdef __cplusplus
 }

@@ -180,7 +180,6 @@ function update() {
 			outputOverlayCtx.lineTo(centroidX + 11, centroidY);
 			outputOverlayCtx.stroke();
 
-			// Experimental: get bounding box
 			if (bounding.checked) {
 				const boundingBoxPointer = Module.ccall("getBoundingBox", "number", ["number", "number"], [perimeterPixelsPointer, project]);
 
@@ -189,7 +188,6 @@ function update() {
 				const boundingBoxW = Module.HEAPU32[boundingBoxPointer / Uint32Array.BYTES_PER_ELEMENT + 2];
 				const boundingBoxH = Module.HEAPU32[boundingBoxPointer / Uint32Array.BYTES_PER_ELEMENT + 3];
 
-				// Experimental: Draw a bounding box!
 				outputOverlayCtx.strokeStyle = "#005ce6";
 				outputOverlayCtx.lineWidth = 4;
 				outputOverlayCtx.beginPath();

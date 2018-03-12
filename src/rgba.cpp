@@ -1,3 +1,10 @@
+#include <emscripten/emscripten.h>
+#include <algorithm>
+#include <array>
+
+#include "util.h"
+#include "rgba.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif

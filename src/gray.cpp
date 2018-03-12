@@ -1,3 +1,9 @@
+#include <emscripten/emscripten.h>
+#include <array>
+
+#include "util.h"
+#include "gray.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -86,7 +92,6 @@ EMSCRIPTEN_KEEPALIVE unsigned char* otsu(unsigned char inputBuf[], unsigned char
 	      		thresh = t;
    			}
 
-   			std::cout << varBetween << std::endl;
 
    		}
 		

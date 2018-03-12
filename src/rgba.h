@@ -1,3 +1,5 @@
+#include <emscripten/emscripten.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

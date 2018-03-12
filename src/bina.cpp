@@ -1,3 +1,12 @@
+#include <emscripten/emscripten.h>
+#include <iostream>
+#include <vector>
+#include <array>
+#include <cmath>
+
+#include "util.h"
+#include "bina.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -645,26 +654,18 @@ EMSCRIPTEN_KEEPALIVE uint32_t* getRegionPerimeter(int16_t map[], int16_t label, 
 // return[1] == y coord
 // return[2] == width
 // return[3] == height
+// I imagined a more elegant way to do this, but I was experiencing compiler bug-like
+// symptoms (silent, weird evidence of unexpected memory access behavior)
+// when assigning a value in a heap array to a vector
 EMSCRIPTEN_KEEPALIVE uint32_t* getBoundingBox(uint32_t perimeterMap[], Wasmcv* project) {
-	// The big idea: we need to look into a group of perimeter pixels to find 
-	// the smallest X value (leftmost bound), largest X value (rightmost bound),
-	// smallest Y (topmost bound) and largest Y (bottommost bound)
-
-	// I imagined a more elegant way to do this, but I was experiencing compiler bug-like
-	// symptoms (silent, weird evidence of unexpected memory access behavior)
-	// when assigning a value in a heap array to a vector
-
 	// Get the length of the perimeter pixels map
 	uint32_t len = perimeterMap[0];
-
 	// Get initial values for the min/max
 	int pixelOffset = perimeterMap[1] / 4;
 	int xMax, xMin = pixelOffset % project->w;
 	int yMax, yMin = pixelOffset / project->w;
-
 	// Init the returnable vector
 	std::vector<uint32_t> boundingBox;
-
 	// Loop through our perimeter pixels evaluating for min/max
 	for (int i = 2; i < len; i += 1) {
 		int pixelOffset = perimeterMap[i] / 4;
@@ -675,15 +676,20 @@ EMSCRIPTEN_KEEPALIVE uint32_t* getBoundingBox(uint32_t perimeterMap[], Wasmcv* p
 	 	if (y > yMax) yMax = y;
 	 	if (y < yMin) yMin = y;
 	}
-
 	boundingBox.push_back(xMin);
 	boundingBox.push_back(yMin);
 	boundingBox.push_back(xMax - xMin);
 	boundingBox.push_back(yMax - yMin);
-
 	return boundingBox.data();
 }
 
+// Get extremal axis length between a pair of coordinates
+// Returns an integer
+EMSCRIPTEN_KEEPALIVE int getExtremalAxisLength(int x1, int y1, int x2, int y2) {
+	float angle = std::atan2(y2 - y1, x2 - x1);
+	float increment = angle < 0.785398 ? 1 / std::cos(angle) : 1 / std::sin(angle);
+	return std::sqrt(std::pow(x2 - x1, 2) + std::pow(y2 - y1, 2) + increment);
+}
 
 #ifdef __cplusplus
 }

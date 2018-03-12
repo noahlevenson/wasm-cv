@@ -3,24 +3,16 @@
 *
 * source ./emsdk_env.sh --build=Release
 *
-* emcc wasm-cv.cpp -s TOTAL_MEMORY=1024MB -s "EXTRA_EXPORTED_RUNTIME_METHODS=['ccall', 'cwrap']" -s WASM=1 -O3 -std=c++1z -o ../demo/week3/wasm-cv.js
+* emcc wasm-cv.cpp util.cpp bina.cpp gray.cpp rgba.cpp -s "EXTRA_EXPORTED_RUNTIME_METHODS=['ccall', 'cwrap']" -s WASM=1 -O3 -std=c++1z -o ../demo/week3/wasm-cv.js
+*
+* -s TOTAL_MEMORY=1024MB
 */
 
 #include <iostream>
-#include <algorithm>
-#include <array>
-#include <vector>
-#include <emscripten/emscripten.h>
 #include "util.h"
-#include "util.cpp"
-#include "rgba.h"
-#include "rgba.cpp"
-#include "gray.h"
-#include "gray.cpp"
 #include "bina.h"
-#include "bina.cpp"
-#include "demo.h"
-#include "demo.cpp"
+#include "gray.h"
+#include "rgba.h"
 
 #ifdef __cplusplus
 extern "C" {
