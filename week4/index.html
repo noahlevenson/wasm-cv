@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+	<title>wasm-cv env</title>
+
+	<link rel="stylesheet" type="text/css" href="styles.css">
+</head>
+
+<body>
+
+	<div id="output">
+	<!-- Here's the output canvas, which is coincidentally where output is displayed-->
+	<canvas id="output-canvas"></canvas> 
+
+	</div>
+
+	<div id="input">
+	<!-- Here's our video element, used to grab input from the webcam -->
+	<video id="video" preload="auto" loop playsinline autoplay></video>
+
+	<!-- Here's the output overlay canvas, used for displaying visualizations of CV data -->
+	<canvas id="output-overlay-canvas"></canvas>
+	</div>
+
+	<br>
+
+	<!-- UI buttons and such -->
+	<button id="start" class="ui-button" onclick="start()">Start</button>
+	<button id="stop" class="ui-button" onclick="stop()">Stop</button>
+
+	<br>
+
+	<!-- Here's our input canvas, which is used as an intermediary between our video and our wasm functions-->
+	<canvas id="input-canvas"></canvas>
+
+	<!-- Include the wasm js glue code -->
+	<script src="wasm-cv.js"></script>
+
+	<!-- Include the js file that controls the behavior of this page -->
+	<script src="env.js"></script>
+
+</body>
+
+</html>

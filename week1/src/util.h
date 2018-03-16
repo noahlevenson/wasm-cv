@@ -223,7 +223,7 @@ class Wasmcv {
 	public:
 	Wasmcv(int w, int h) {
 		this->w = w;
-		this->h = w;
+		this->h = h;
 		this->size = w * h * 4;
 		NeighborhoodOffsets neighborhoodOffsets(w);
 		this->offsets = neighborhoodOffsets;

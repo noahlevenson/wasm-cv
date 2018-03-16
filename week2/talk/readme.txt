@@ -1,7 +1,5 @@
 This week:
 
-- Writing inline JavaScript in a C program???!!!
-
 - Binary image processing: finding corners via pattern matching
 
 - Binary image processing: using the union-find algorithm to label connected components
