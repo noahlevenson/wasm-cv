@@ -56,10 +56,12 @@ EMSCRIPTEN_KEEPALIVE unsigned char* erode(unsigned char inputBuf[], unsigned cha
 }
 
 // Binary dilation using a 3x3 structuring kernel
-// If dilation finds a black input pixel, then it ORs the entire structuring kernel, centered over the input pixel, to the output image
+// If dilation finds a black input pixel, then it ORs the entire structuring kernel, 
+// centered over the input pixel, to the output image
 // The effect is that black pixel regions "grow" in approximately the shape of the structuring kernel
 // TODO: Optimize this - there's a faster implementation
-unsigned char* kDilate3x3(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project, BinaryStructuringElement3x3 k) {
+unsigned char* kDilate3x3(unsigned char inputBuf[], BufferPool* pool, Wasmcv* project, BinaryStructuringElement3x3 k) {
+	unsigned char* outputBuf = pool->getNew();
 	std::array<int, 9> o = project->offsets._3x3;
 	for (int i = 3; i < project->size; i += 4) {
 		outputBuf[i - 3] = 0;
@@ -79,10 +81,12 @@ unsigned char* kDilate3x3(unsigned char inputBuf[], unsigned char outputBuf[], W
 }
 
 // Binary dilation using a 5x5 structuring kernel
-// If dilations finds a black input pixel, then it ORs the entire structuring kernel, centered over the input pixel, to the output image
+// If dilation finds a black input pixel, then it ORs the entire structuring kernel, 
+// centered over the input pixel, to the output image
 // The effect is that black pixel regions "grow" in approximately the shape of the structuring kernel
 // TODO: Optimize this - there's a faster implementation
-unsigned char* kDilate5x5(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project, BinaryStructuringElement5x5 k) {
+unsigned char* kDilate5x5(unsigned char inputBuf[], BufferPool* pool, Wasmcv* project, BinaryStructuringElement5x5 k) {
+	unsigned char* outputBuf = pool->getNew();
 	std::array<int, 25> o = project->offsets._5x5;
 	for (int i = 3; i < project->size; i += 4) {
 		outputBuf[i - 3] = 0;
@@ -102,18 +106,13 @@ unsigned char* kDilate5x5(unsigned char inputBuf[], unsigned char outputBuf[], W
 }
 
 // Binary erosion using a 3x3 structuring kernel
-// We center the structuring element over each input pixel and check whether every black pixel in the structuring element corresponds
-// to a black pixel in the image beneath it. If yes, then we OR the center value of our structuring element with our centered input pixel
+// We center the structuring element over each input pixel and check whether every black pixel
+// in the structuring element corresponds to a black pixel in the image beneath it. If yes, 
+// then we OR the center value of our structuring element with our centered input pixel
 // The effect is that white pixel regions "grow" in approximately the shape of the structuring kernel
-// TODO: Instead of ORing output pixel with structuring kernel pixel per the spec, we're simply making output pixel = input pixel...
-// I think we get this for free as a result of predetermining that if structuring kernel is completely contained, and input pixel = 255,
-// then structuring kernel must also = 255...
-// case a: i = 255, k = 255 -- possible complete containment, output pixel should = 255
-// case b: i = 255, k = 0 -- possible complete containment, output pixel should = 255
-// case c: i = 0, k = 255 -- no complete containment, output pixel should = 0
-// case d: i = 0, k = 0 -- possible complete containment, output pixel should = 0
 // TODO: Optimize this - there's a faster implementation
-unsigned char* kErode3x3(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project, BinaryStructuringElement3x3 k) {
+unsigned char* kErode3x3(unsigned char inputBuf[], BufferPool* pool, Wasmcv* project, BinaryStructuringElement3x3 k) {
+	unsigned char* outputBuf = pool->getNew();
 	std::array<int, 9> o = project->offsets._3x3;
 	for (int i = 3; i < project->size; i += 4) {
 		outputBuf[i - 3] = 0;
@@ -132,7 +131,8 @@ unsigned char* kErode3x3(unsigned char inputBuf[], unsigned char outputBuf[], Wa
 
 // Binary erosion using a 5x5 structuring kernel
 // TODO: Optimize this - there's a faster implementation
-unsigned char* kErode5x5(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project, BinaryStructuringElement5x5 k) {
+unsigned char* kErode5x5(unsigned char inputBuf[], BufferPool* pool, Wasmcv* project, BinaryStructuringElement5x5 k) {
+	unsigned char* outputBuf = pool->getNew();
 	std::array<int, 25> o = project->offsets._5x5;
 	for (int i = 3; i < project->size; i += 4) {
 		outputBuf[i - 3] = 0;
@@ -150,9 +150,10 @@ unsigned char* kErode5x5(unsigned char inputBuf[], unsigned char outputBuf[], Wa
 }
 
 // Find edges (simple)
-// Finds neighborhoods that are entirely black and replaces their p0 with a white value
+// Finds neighborhoods that are entirely black pixels and replaces their p0 with a white value
 // the result is that deep black "fill" areas are turned white, while the edges of those fill areas are preserved as black
-EMSCRIPTEN_KEEPALIVE unsigned char* findEdges(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project) {
+EMSCRIPTEN_KEEPALIVE unsigned char* findEdges(unsigned char inputBuf[], BufferPool* pool, Wasmcv* project) {
+	unsigned char* outputBuf = pool->getNew();
 	for (int i = 3; i < project->size; i += 4) {
 		int sigma = sumNeighbors(inputBuf, i, project->w);
 		outputBuf[i] = sigma == 2040 ? 0 : inputBuf[i];
@@ -188,43 +189,36 @@ EMSCRIPTEN_KEEPALIVE unsigned char* gaussianApprox(unsigned char inputBuf[], uns
 }
 
 // Binary morphological closing using a 3x3 structuring element
-EMSCRIPTEN_KEEPALIVE unsigned char* close3x3(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project, BinaryStructuringElement3x3 k) {
-	unsigned char* tempBuf = new unsigned char[project->size];
-	tempBuf = kDilate3x3(inputBuf, tempBuf, project, k);
-	outputBuf = kErode3x3(tempBuf, outputBuf, project, k);
-	delete [] tempBuf;
-	return outputBuf;
+EMSCRIPTEN_KEEPALIVE unsigned char* close3x3(unsigned char inputBuf[], BufferPool* pool, Wasmcv* project, BinaryStructuringElement3x3 k) {
+	kDilate3x3(inputBuf, pool, project, k);
+	kErode3x3(pool->getCurrent(), pool, project, k);
+	return pool->getCurrent();
 }
 
 // Binary morphological closing using a 5x5 structuring element
-EMSCRIPTEN_KEEPALIVE unsigned char* close5x5(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project, BinaryStructuringElement5x5 k) {
-	unsigned char* tempBuf = new unsigned char[project->size];
-	tempBuf = kDilate5x5(inputBuf, tempBuf, project, k);
-	outputBuf = kErode5x5(tempBuf, outputBuf, project, k);
-	delete [] tempBuf;
-	return outputBuf;
+EMSCRIPTEN_KEEPALIVE unsigned char* close5x5(unsigned char inputBuf[], BufferPool* pool, Wasmcv* project, BinaryStructuringElement5x5 k) {
+	kDilate5x5(inputBuf, pool, project, k);
+	kErode5x5(pool->getCurrent(), pool, project, k);
+	return pool->getCurrent();
 }
 
 // Binary morphological opening using a 3x3 structuring element
-EMSCRIPTEN_KEEPALIVE unsigned char* open3x3(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project, BinaryStructuringElement3x3 k) {
-	unsigned char* tempBuf = new unsigned char[project->size];
-	tempBuf = kErode3x3(inputBuf, tempBuf, project, k);
-	outputBuf = kDilate3x3(tempBuf, outputBuf, project, k);
-	delete [] tempBuf;
-	return outputBuf;
+EMSCRIPTEN_KEEPALIVE unsigned char* open3x3(unsigned char inputBuf[], BufferPool* pool, Wasmcv* project, BinaryStructuringElement3x3 k) {
+	kErode3x3(inputBuf, pool, project, k);
+	kDilate3x3(pool->getCurrent(), pool, project, k);
+	return pool->getCurrent();
 }
 
 // Binary morphological opening using a 3x3 structuring element
-EMSCRIPTEN_KEEPALIVE unsigned char* open5x5(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project, BinaryStructuringElement5x5 k) {
-	unsigned char* tempBuf = new unsigned char[project->size];
-	tempBuf = kErode5x5(inputBuf, tempBuf, project, k);
-	outputBuf = kDilate5x5(tempBuf, outputBuf, project, k);
-	delete [] tempBuf;
-	return outputBuf;
+EMSCRIPTEN_KEEPALIVE unsigned char* open5x5(unsigned char inputBuf[], BufferPool* pool, Wasmcv* project, BinaryStructuringElement5x5 k) {
+	kErode5x5(inputBuf, pool, project, k);
+	kDilate5x5(pool->getCurrent(), pool, project, k);
+	return pool->getCurrent();
 }
 
 // Subtract an image from an image
-EMSCRIPTEN_KEEPALIVE unsigned char* sub(unsigned char inputBufA[], unsigned char inputBufB[], unsigned char outputBuf[], Wasmcv* project) {
+EMSCRIPTEN_KEEPALIVE unsigned char* sub(unsigned char inputBufA[], unsigned char inputBufB[], BufferPool* pool, Wasmcv* project) {
+	unsigned char* outputBuf = pool->getNew();
 	for (int i = 3; i < project->size; i += 4) {
 		outputBuf[i - 3] = 0;
 		outputBuf[i - 2] = 0;
@@ -236,47 +230,39 @@ EMSCRIPTEN_KEEPALIVE unsigned char* sub(unsigned char inputBufA[], unsigned char
 
 // White top hat (residue find) operator using a 3x3 structuring element
 // = the difference between an input image and its opening 
-EMSCRIPTEN_KEEPALIVE unsigned char* topHat3x3White(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project, BinaryStructuringElement3x3 k) {
-	unsigned char* tempBuf = new unsigned char[project->size];
-	tempBuf = open3x3(inputBuf, tempBuf, project, k);
-	outputBuf = sub(inputBuf, tempBuf, outputBuf, project);
-	delete [] tempBuf;
+EMSCRIPTEN_KEEPALIVE unsigned char* topHat3x3White(unsigned char inputBuf[], BufferPool* pool, Wasmcv* project, BinaryStructuringElement3x3 k) {
+	unsigned char* openedImage = open3x3(inputBuf, pool, project, k);
+	unsigned char* outputBuf = sub(inputBuf, openedImage, pool, project);
 	return outputBuf;
 }
 
-// White top hat (residue find) operator using a 5x5 structuring element
-// = the difference between an input image and its opening 
-EMSCRIPTEN_KEEPALIVE unsigned char* topHat5x5White(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project, BinaryStructuringElement5x5 k) {
-	unsigned char* tempBuf = new unsigned char[project->size];
-	tempBuf = open5x5(inputBuf, tempBuf, project, k);
-	outputBuf = sub(inputBuf, tempBuf, outputBuf, project);
-	delete [] tempBuf;
+// // White top hat (residue find) operator using a 5x5 structuring element
+// // = the difference between an input image and its opening 
+EMSCRIPTEN_KEEPALIVE unsigned char* topHat5x5White(unsigned char inputBuf[], BufferPool* pool, Wasmcv* project, BinaryStructuringElement5x5 k) {
+	unsigned char* openedImage = open5x5(inputBuf, pool, project, k);
+	unsigned char* outputBuf = sub(inputBuf, openedImage, pool, project);
 	return outputBuf;
 }
 
-// Black top hat (residue find) operator using a 3x3 structuring element
-// = the difference between an image's closing and its original input image
-EMSCRIPTEN_KEEPALIVE unsigned char* topHat3x3Black(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project, BinaryStructuringElement3x3 k) {
-	unsigned char* tempBuf = new unsigned char[project->size];
-	tempBuf = close3x3(inputBuf, tempBuf, project, k);
-	outputBuf = sub(tempBuf, inputBuf, outputBuf, project);
-	delete [] tempBuf;
+// // Black top hat (residue find) operator using a 3x3 structuring element
+// // = the difference between an image's closing and its original input image
+EMSCRIPTEN_KEEPALIVE unsigned char* topHat3x3Black(unsigned char inputBuf[], BufferPool* pool, Wasmcv* project, BinaryStructuringElement3x3 k) {
+	unsigned char* closedImage = close3x3(inputBuf, pool, project, k);
+	unsigned char* outputBuf = sub(closedImage, inputBuf, pool, project);
 	return outputBuf;
 }
 
-// Black top hat (residue find) operator using a 5x5 structuring element
-// = the difference between an image's closing and its original input image
-EMSCRIPTEN_KEEPALIVE unsigned char* topHat5x5Black(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project, BinaryStructuringElement5x5 k) {
-	unsigned char* tempBuf = new unsigned char[project->size];
-	tempBuf = close5x5(inputBuf, tempBuf, project, k);
-	outputBuf = sub(tempBuf, inputBuf, outputBuf, project);
-	delete [] tempBuf;
+// // Black top hat (residue find) operator using a 5x5 structuring element
+// // = the difference between an image's closing and its original input image
+EMSCRIPTEN_KEEPALIVE unsigned char* topHat5x5Black(unsigned char inputBuf[], BufferPool* pool, Wasmcv* project, BinaryStructuringElement5x5 k) {
+	unsigned char* closedImage = close5x5(inputBuf, pool, project, k);
+	unsigned char* outputBuf = sub(closedImage, inputBuf, pool, project);
 	return outputBuf;
 }
 
 // Determine whether an internal corner exists at a specified location via pattern matching
 // TODO: Eliminate the code repetition - we can iterate through the structuring elements using pointer arithmetic
-// also, another way to do this is to copy the input image's neighborhood to an array and then compare it to the
+// Also, another way to do this is to copy the input image's neighborhood to an array and then compare it to the
 // structuring element for equality
 EMSCRIPTEN_KEEPALIVE bool findCornerExternal(unsigned char inputBuf[], Wasmcv* project, int loc) {
 	std::array<int, 4> o = project->offsets._2x2;
@@ -321,7 +307,7 @@ EMSCRIPTEN_KEEPALIVE bool findCornerExternal(unsigned char inputBuf[], Wasmcv* p
 
 // Determine whether an external corner exists at a specified location via pattern matching
 // TODO: Eliminate the code repetition - we can iterate through the structuring elements using pointer arithmetic
-// also, another way to do this is to copy the input image's neighborhood to an array and then compare it to the
+// Also, another way to do this is to copy the input image's neighborhood to an array and then compare it to the
 // structuring element for equality
 EMSCRIPTEN_KEEPALIVE bool findCornerInternal(unsigned char inputBuf[], Wasmcv* project, int loc) {
 	std::array<int, 4> o = project->offsets._2x2;
@@ -365,9 +351,7 @@ EMSCRIPTEN_KEEPALIVE bool findCornerInternal(unsigned char inputBuf[], Wasmcv* p
 }
 
 // Find all internal and external corners via pattern matching
-// Returns a heap pointer (js type UInt32Array) to a wasm array of imgdata offsets where element 0 = the length of the array
-// TODO: Optimization - it may be faster to create a very large raw array and simply not use all of it
-// ALSO TODO: The last column and row of a given image are incapable of posessing a corner, so we
+// TODO: Optimize! The last column and row of a given image are incapable of posessing a corner, so we
 // should not bother operating on them
 EMSCRIPTEN_KEEPALIVE std::vector<int> findAllCorners(unsigned char inputBuf[], Wasmcv* project) {
 	std::vector<int> corners(1);
@@ -394,8 +378,6 @@ EMSCRIPTEN_KEEPALIVE int countForegroundObjects(unsigned char inputBuf[], Wasmcv
 
 // Get conected components via recursive labeling (using 4-neighborhood) and return a segmentation map
 // TODO: This algorithm fails on large images (even 640x480) due to depth of recursion - delete it entirely?
-// TODO: is int16_t the most efficient data type? For wasm-cv functions that
-// return arrays, we should consider standardizing their return signature
 EMSCRIPTEN_KEEPALIVE int16_t* getConnectedComponentsRecursive(unsigned char inputBuf[], Wasmcv* project) {
 	// Create the segmentation map and initialize it with 0s
 	std::vector<int16_t> map(project->size, 0);
@@ -437,9 +419,8 @@ void searchConnected(Wasmcv* project, std::vector<int16_t>& map, int label, int 
 
 // Get connected components via union-find algorithm (using 4-neighborhood) and return a segmentation map
 // A segmentation map is a 1:1 representation of an imagedata object but with region labels replacing positive pixel values
-// TODO: is int16_t the most efficient data type? For wasm-cv functions that
-// return arrays, we should consider standardizing their return signature
-// ALSO TODO: It can get awfully slow depending on what type of image it's working on - how can we optimize?
+// TODO: Optimize! Should segmentation maps be pixel representations instead of byte representations?
+// Should we implement run length encoding?
 EMSCRIPTEN_KEEPALIVE std::vector<int> getConnectedComponents(unsigned char inputBuf[], Wasmcv* project) {
 	// Init a global variable for our region labels
 	int label = 1;
@@ -501,7 +482,7 @@ EMSCRIPTEN_KEEPALIVE std::vector<int> getConnectedComponents(unsigned char input
 }
 
 // Implementation of find as part of the union-find algorithm
-// Traverse a disjoint set data strcture to find the parent node of a given value
+// Traverse a disjoint set tree to find the parent node of a given value
 int findParent(int label, int disjointSet[]) {
 	while (disjointSet[label] != 0) {	
 		label = disjointSet[label];
@@ -526,8 +507,40 @@ int* constructUnion(int labelX, int labelY, int disjointSet[]) {
 	return disjointSet;
 }
 
+// Turn a segmentation map into a psychedelic visualization of itself
+// Returns a pointer to an image
+EMSCRIPTEN_KEEPALIVE unsigned char* segMapToImage(std::vector<int> map, BufferPool* pool, Wasmcv* project) {
+	unsigned char* outputBuf = pool->getNew();
+	float r = float(rand()) / float(RAND_MAX);
+	float g = float(rand()) / float(RAND_MAX);
+	float b = float(rand()) / float(RAND_MAX);
+	for (int i = 3; i < project->size; i += 4) {
+		outputBuf[i - 3] = (unsigned char)(float(map[i]) * float(r));
+		outputBuf[i - 2] = (unsigned char)(float(map[i]) * float(g));
+		outputBuf[i - 1] = (unsigned char)(float(map[i]) * float(b));
+		outputBuf[i] = 255;
+	}
+	return outputBuf;
+}
+
+// Create an image from a perimeter map
+// Returns a pointer to an image
+// TODO: Accept a Pixel object and draw the perimeter using it instead of hardcoded RGB green
+EMSCRIPTEN_KEEPALIVE unsigned char* perimeterMapToImage(std::vector<int> map, BufferPool* pool, Wasmcv* project) {
+	unsigned char* outputBuf = pool->getNew();
+	for (int i = 0; i < project->size; i += 1) {
+		outputBuf[i] = 0;
+	}
+	for (int i = 0; i < project->size; i += 1) {
+		outputBuf[map[i]] = 102;
+		outputBuf[map[i] + 1] = 255;
+		outputBuf[map[i] + 2] = 51;
+		outputBuf[map[i] + 3] = 255;
+	}
+	return outputBuf;
+}
+
 // Get the area of a region of pixels in a segmentation map
-// Returns the area as an integer
 EMSCRIPTEN_KEEPALIVE int getRegionArea(std::vector<int> map, int label, Wasmcv* project) {
 	int area = 0;
 	for (int i = 3; i < project->size; i += 4) {
@@ -539,7 +552,7 @@ EMSCRIPTEN_KEEPALIVE int getRegionArea(std::vector<int> map, int label, Wasmcv* 
 }
 
 // Get the area for all regions of pixels in a segmentation map
-// Returns an array of length 1200 (our hardcoded max number of image segments) where each index is
+// Returns an array of length 1200 (our hardcoded max number of image segments) where each element is
 // the area of its corresponding region
 EMSCRIPTEN_KEEPALIVE std::vector<int> getAllRegionAreas(std::vector<int> map, Wasmcv* project) {
  	std::vector<int> hist(1200, 0);
@@ -550,9 +563,8 @@ EMSCRIPTEN_KEEPALIVE std::vector<int> getAllRegionAreas(std::vector<int> map, Wa
 }
 
 // Get region centroid for a labeled region in a segmentation map
-// Returns a heap pointer (js type UInt32Array) to a wasm array of size 2
-// return[0] == x coord
-// return[1] == y coord
+// vector[0] == x coord
+// vector[1] == y coord
 EMSCRIPTEN_KEEPALIVE std::vector<int> getRegionCentroid(std::vector<int> map, int label, Wasmcv* project) {
 	std::vector<int> centroid;
 	long accumulatedX = 0;
@@ -574,11 +586,10 @@ EMSCRIPTEN_KEEPALIVE std::vector<int> getRegionCentroid(std::vector<int> map, in
 }
 
 // Get region centroids for all regions of pixels in a segmentation map
-// Returns a heap pointer (js type UInt32Array) to a wasm array of size 1200 
-// (our hardcoded max number of image segments) where each index corresponds to a region label
-// and each index holds the value of an imagedata offset representing the centroid of that region label
-// TODO: This is VERY inefficient because it converts from offset to x/y coords and then back again...
-// we should figure out a way to pass x/y coords back to javascript...
+// Returns a vector of 1200 elements (our hardcoded max number of image segments) 
+// where each element corresponds to a region label and holds the value of an imagedata offset 
+// representing the centroid of that region label
+// TODO: This is needlessly converting from offset to vec2 and back again
 EMSCRIPTEN_KEEPALIVE std::vector<int> getAllRegionCentroids(std::vector<int> map, int areaThresh, Wasmcv* project) {
 	// Create an array of a length = our max number of image segments
 	std::vector<int> centroids(1200, 0);
@@ -609,8 +620,7 @@ EMSCRIPTEN_KEEPALIVE std::vector<int> getAllRegionCentroids(std::vector<int> map
 }
 
 // Get perimeter of a labeled region in a segmentation map using the 4-connected model
-// Returns a perimeter map as a heap pointer (js type UInt32Array) to a wasm array of imgdata 
-// offsets where element 0 = the length of the array
+// Returns a vector of imgdata offsets
 EMSCRIPTEN_KEEPALIVE std::vector<int> getRegionPerimeter(std::vector<int> map, int label, Wasmcv* project) {
 	// Init a vector to hold our returnable perimeter locations
 	std::vector<int> perimeter(1, 0);
@@ -618,7 +628,7 @@ EMSCRIPTEN_KEEPALIVE std::vector<int> getRegionPerimeter(std::vector<int> map, i
 	std::vector<int> region;
 	for (int i = 3; i < project->size; i += 4) {
 		if (map[i] == label) {
-			region.push_back(i); // We're pushing in the A byte of each pixel - be careful!
+			region.push_back(i); // We're pushing in the alpha byte of each pixel - be careful!
 		}
 	}
 	// Now we loop through every pixel in the given region 
@@ -639,7 +649,7 @@ EMSCRIPTEN_KEEPALIVE std::vector<int> getRegionPerimeter(std::vector<int> map, i
 		// So if all of our neighbor labels == our pixel label, then our pixel is
 		// surrounded by more of its kind and is NOT a border pixel
 		if (value != label) {
-			perimeter.push_back(region[i] - 3); // We're pushing in the R byte of each pixel - watch this!
+			perimeter.push_back(region[i] - 3); // We're pushing in the red byte of each pixel - be careful!
 		}
 	}
 	perimeter[0] = perimeter.size() - 1;
@@ -647,14 +657,7 @@ EMSCRIPTEN_KEEPALIVE std::vector<int> getRegionPerimeter(std::vector<int> map, i
 }
 
 // Get bounding box coords for a given map of perimeter pixels
-// Returns a heap pointer (js type UInt32Array) to a wasm array of size 4
-// return[0] == x coord
-// return[1] == y coord
-// return[2] == width
-// return[3] == height
-// I imagined a more elegant way to do this, but I was experiencing compiler bug-like
-// symptoms (silent, weird evidence of unexpected memory access behavior)
-// when assigning a value in a heap array to a vector
+// Returns a vector of 4 elements: [x, y, w, h]
 EMSCRIPTEN_KEEPALIVE std::vector<int> getBoundingBox(std::vector<int> perimeterMap, Wasmcv* project) {
 	// Get the length of the perimeter pixels map
 	uint32_t len = perimeterMap[0];
@@ -682,7 +685,6 @@ EMSCRIPTEN_KEEPALIVE std::vector<int> getBoundingBox(std::vector<int> perimeterM
 }
 
 // Get extremal axis length between a pair of coordinates
-// Returns an integer
 EMSCRIPTEN_KEEPALIVE int getExtremalAxisLength(int x1, int y1, int x2, int y2) {
 	float angle = std::atan2(y2 - y1, x2 - x1);
 	float increment = angle < 0.785398 ? 1 / std::cos(angle) : 1 / std::sin(angle);

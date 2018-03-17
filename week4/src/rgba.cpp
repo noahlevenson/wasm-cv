@@ -141,7 +141,8 @@ EMSCRIPTEN_KEEPALIVE unsigned char* contrast(unsigned char inputBuf[], unsigned 
 }
 
 // Convert an RGBA image to simulated grayscale colorspace
-EMSCRIPTEN_KEEPALIVE unsigned char* toGrayscale(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project) {
+EMSCRIPTEN_KEEPALIVE unsigned char* toGrayscale(unsigned char inputBuf[], BufferPool* pool, Wasmcv* project) {
+	unsigned char* outputBuf = pool->getNew();
 	for (int i = 0; i < project->size; i += 4) {
 		int luma = inputBuf[i] * 0.2126 + inputBuf[i + 1] * 0.7152 + inputBuf[i + 2] * 0.0722;
 		outputBuf[i] = 0;

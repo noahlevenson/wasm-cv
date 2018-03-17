@@ -9,7 +9,8 @@ extern "C" {
 #endif
 
 // Threshold a grayscale image to binary
-EMSCRIPTEN_KEEPALIVE unsigned char* threshold(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project, int t) {
+EMSCRIPTEN_KEEPALIVE unsigned char* threshold(unsigned char inputBuf[], BufferPool* pool, Wasmcv* project, int t) {
+	unsigned char* outputBuf = pool->getNew();
 	for (int i = 0; i < project->size; i += 4) {
 		outputBuf[i] = 0;
 		outputBuf[i + 1] = 0;
@@ -42,7 +43,7 @@ EMSCRIPTEN_KEEPALIVE unsigned char* thresholdOCR(unsigned char inputBuf[], unsig
 }
 
 // Otsu's method for thresholding
-EMSCRIPTEN_KEEPALIVE unsigned char* otsu(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project) {
+EMSCRIPTEN_KEEPALIVE unsigned char* otsu(unsigned char inputBuf[], BufferPool* pool, Wasmcv* project) {
 	// Build a histogram of values for every pixel in the input image
 	unsigned char hist[256] = {0};
 	for (int i = 3; i < project->size; i += 4) {
@@ -97,14 +98,14 @@ EMSCRIPTEN_KEEPALIVE unsigned char* otsu(unsigned char inputBuf[], unsigned char
 		
 	}
 	//std::cout << thresh << std::endl;
-
-	outputBuf = threshold(inputBuf, outputBuf, project, thresh);
+	unsigned char* outputBuf = threshold(inputBuf, pool, project, thresh);
 	return outputBuf;
 
 }
 
 // Median filter a grayscale image using a 3x3 neighborhood sample
-EMSCRIPTEN_KEEPALIVE unsigned char* median3x3(unsigned char inputBuf[], unsigned char outputBuf[], Wasmcv* project) {
+EMSCRIPTEN_KEEPALIVE unsigned char* median3x3(unsigned char inputBuf[], BufferPool* pool, Wasmcv* project) {
+	unsigned char* outputBuf = pool->getNew();
 	std::array<int, 9> o = project->offsets._3x3;
 	unsigned char hist[9];
 	for (int i = 3; i < project->size; i += 4) {

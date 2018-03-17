@@ -1,6 +1,7 @@
 This week:
 
-- The meaning(lessness) of C++ scope in a wasm project and the difficulty of managing memory
+- The meaning(lessness) of C++ scope in a wasm project, crossing the boundary and the 
+  difficulty of managing memory
 
 - Software design for wasm projects: Avoiding frequent data transactions with the 90/10 philosophy
 

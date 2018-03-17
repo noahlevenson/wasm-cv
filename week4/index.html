@@ -32,6 +32,70 @@
 
 	<br>
 
+	<div>
+
+		<div class="panel">
+
+			<p class="stack">processing</p>
+
+			<p><input id="toGrayscale" type="checkbox" class="stack" name="grayscale">
+			<label for="toGrayscale">toGrayscale()</label></p>
+
+			<p><input id="threshold" type="checkbox" class="stack" name="threshold">
+			<label for="threshold">threshold(t = 127)</label></p>
+
+			<p><input id="median3x3" type="checkbox" class="stack" name="median">
+			<label for="median3x3">median3x3()</label></p>
+
+			<p><input id="kDilate5x5" type="checkbox" class="stack" name="dilate">
+			<label for="kDilate5x5">kDilate5x5(_5x5iso)</label></p>
+
+			<p><input id="kErode5x5" type="checkbox" class="stack" name="erode">
+			<label for="kErode5x5">kErode5x5(_5x5iso)</label></p>
+
+			<p><input id="open5x5" type="checkbox" class="stack" name="open">
+			<label for="open5x5">open5x5(_5x5iso)</label></p>
+
+			<p><input id="close5x5" type="checkbox" class="stack" name="close">
+			<label for="close5x5">close5x5(_5x5iso)</label></p>
+
+			<p><input id="findEdges" type="checkbox" class="stack" name="edges">
+			<label for="findEdges">findEdges()</label></p>
+
+		</div>
+
+		<div class="panel">
+
+			<p class="stack">analysis</p>
+
+			<p><input id="findCorners" type="checkbox" class="stack" name="corners">
+			<label for="findCorners">findAllCorners()</label></p>
+
+			<p><input id="findSegments" type="checkbox" class="stack" name="segments">
+			<label for="findSegments">getConnectedComponents()</label></p>
+
+			<p><input disabled id="visualizeSegments" type="checkbox" class="stack-option" name="visualize-segments">
+			<label for="visualizeSegments">visualize labeled regions</label></p>
+
+			<p><input disabled id="findCentroids" type="checkbox" class="stack" name="centroids">
+			<label for="findCentroids">getAllRegionCentroids(t = 40)</label></p>
+
+		</div>
+
+		<div class="panel">
+
+			<p class="stack">interpretation</p>
+
+			<p><input id="findPerimeter" type="checkbox" class="stack" name="perimeter">
+			<label for="findPerimeter">getRegionPerimeter()</label></p>
+
+			<p><input disabled id="findBoundingBox" type="checkbox" class="stack" name="bounding">
+			<label for="findBoundingBox">getBoundingBox()</label></p>
+
+		</div>
+
+	</div>
+
 	<!-- Here's our input canvas, which is used as an intermediary between our video and our wasm functions-->
 	<canvas id="input-canvas"></canvas>
 

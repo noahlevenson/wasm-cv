@@ -27,10 +27,26 @@ outputOverlayCanvas.height = webcamHeight;
 inputCanvas.width = webcamWidth;
 inputCanvas.height = webcamHeight;
 
-// Grab canvas contexts
+// Identifiers for canvas contexts
 const outputCtx = outputCanvas.getContext("2d");
 const outputOverlayCtx = outputOverlayCanvas.getContext("2d");
 const inputCtx = inputCanvas.getContext("2d");
+
+// Global identifiers for all the proc stack checkboxes on the page
+let toGrayscale = document.getElementById("toGrayscale");
+let threshold = document.getElementById("threshold");
+let median = document.getElementById("median3x3");
+let dilate = document.getElementById("kDilate5x5");
+let erode = document.getElementById("kErode5x5");
+let open = document.getElementById("open5x5");
+let close = document.getElementById("close5x5");
+let edges = document.getElementById("findEdges");
+let corners = document.getElementById("findCorners");
+let segments = document.getElementById("findSegments");
+let segmentVisualizer = document.getElementById("visualizeSegments");
+let centroids = document.getElementById("findCentroids");
+let perimeter = document.getElementById("findPerimeter");
+let bounding = document.getElementById("findBoundingBox");
 
 // Ask user's permission and then acess their webcam; getUserMedia() returns a promise that resolves 
 // with a stream object which must be assigned as the srcObject of a video object

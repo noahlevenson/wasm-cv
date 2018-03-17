@@ -1,4 +1,5 @@
 #include <emscripten/emscripten.h>
+#include <vector>
 
 #include "util.h"
 
@@ -20,6 +21,15 @@ EMSCRIPTEN_KEEPALIVE bool isInImageBounds(Wasmcv* project, int offset) {
 	} else {
 		return false;
 	}
+}
+
+// Convert a raw offset in an HTML imagedata object to a 2D vector
+EMSCRIPTEN_KEEPALIVE std::vector<int> offsetToVec2(int offset, Wasmcv* project) {
+	std::vector<int> vec2(2);
+	int pixelOffset = offset / 4;
+	vec2[0] = pixelOffset % project->w;
+	vec2[1] = pixelOffset / project->w;
+	return vec2;
 }
 
 #ifdef __cplusplus

@@ -12,12 +12,15 @@ class BinaryStructuringElement3x3;
 class BinaryStructuringElement5x5;
 class Se;
 class Wasmcv;
+class BufferPool;
 class Pixel;
 class ImageBuffer;
+
 
 // Function prototypes
 EMSCRIPTEN_KEEPALIVE Wasmcv* init(int w, int h);
 EMSCRIPTEN_KEEPALIVE bool isInImageBounds(Wasmcv* project, int offset);
+EMSCRIPTEN_KEEPALIVE std::vector<int> offsetToVec2(int offset, Wasmcv* project);
 
 // Class for a collection of pixel neighborhood 1D offsets
 class NeighborhoodOffsets {
@@ -178,7 +181,7 @@ class BinaryStructuringElement5x5 {
 // Static class for a library of structuring elements (used for morphological erosion, dilation, opening and closing)
 class Se {
 	public:
-		Se(void) {
+		Se() {
 			std::array<unsigned char, 9> _3x3iso = {255, 255, 255, 255, 255, 255, 255, 255, 255}; 
 			this->_3x3iso = BinaryStructuringElement3x3(_3x3iso);
 			std::array<unsigned char, 25> _5x5iso = {255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255};
@@ -221,23 +224,74 @@ class Se {
 // Class for a wasm-cv project 
 class Wasmcv {
 	public:
-	Wasmcv(int w, int h) {
+		Wasmcv(int w, int h) {
 		this->w = w;
 		this->h = h;
 		this->size = w * h * 4;
+		this->centerX = w / 2;
+		this->centerY = h / 2;
 		NeighborhoodOffsets neighborhoodOffsets(w);
 		this->offsets = neighborhoodOffsets;
 		Se se;
 		this->se = se;
-	} 
-	Wasmcv() {
+		} 
+		Wasmcv() {
 
-	}
-	int w;
-	int h;
-	int size;
-	NeighborhoodOffsets offsets;
-	Se se;
+		}
+		int w;
+		int h;
+		int size;
+		int centerX;
+		int centerY;
+		NeighborhoodOffsets offsets;
+		Se se;
+};
+
+// Class for a buffer pool
+class BufferPool {
+	public:
+		BufferPool(int w, int h) {
+			this->size = w * h * 4;
+			this->buffers[0] = new unsigned char[this->size];
+			this->buffers[1] = new unsigned char[this->size];
+			this->buffers[2] = new unsigned char[this->size];
+			this->buffers[3] = new unsigned char[this->size];
+			this->buffers[4] = new unsigned char[this->size];
+			this->buffers[5] = new unsigned char[this->size];
+			this->current = 0;
+		}
+		BufferPool() {
+
+		}
+		~BufferPool() {
+			delete [] this->buffers[0];
+			delete [] this->buffers[1];
+			delete [] this->buffers[2];
+			delete [] this->buffers[3];
+			delete [] this->buffers[4];
+			delete [] this->buffers[5];
+		}
+		unsigned char* getNew() {
+			next();
+			return this->buffers[current];
+		}	
+		unsigned char* getCurrent() {
+			return this->buffers[current];
+		}
+		unsigned char* copyToNew(unsigned char inputBuf[]) {
+			next();
+			for (int i = 0; i < this->size; i += 1) {
+				this->buffers[current][i] = inputBuf[i];
+			}
+			return this->buffers[current];
+		}
+	private:
+		void next() {
+			this->current = this->current == 5 ? 0 : this->current += 1;
+		}
+		int current;
+		int size;
+		std::array<unsigned char*, 6> buffers;
 };
 
 // Class for a HTML5 canvas pixel
@@ -266,13 +320,13 @@ class ImageBuffer {
 		ImageBuffer(int w, int h) {
 			this->w = w;
 			this->h = h;
-			this->size = w * h;
+			this->size = w * h * 4;
 			this->data = new unsigned char[w * h];
 		}
 		ImageBuffer() {
 
 		}
-		void destroy() {
+		~ImageBuffer() {
 			delete [] this->data;
 		}
 		int w;
