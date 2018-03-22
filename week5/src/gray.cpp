@@ -1,7 +1,6 @@
 #include <emscripten/emscripten.h>
 #include <array>
 #include <cmath>
-#include <iostream>
 
 #include "util.h"
 #include "gray.h"
@@ -44,19 +43,21 @@ EMSCRIPTEN_KEEPALIVE unsigned char* thresholdOCR(unsigned char inputBuf[], unsig
 	return outputBuf;
 }
 
-// Otsu's method for thresholding
-// This method assumes a bimodal luma distribution and seeks to find the largest
-// between-class variance for every hypothetical threshold value
+// Otsu's method for automatic thresholding
+// This method assumes a bimodal luma distribution and seeks to find the optimal threshold
+// by separating luma values into two classes and finding the smallest between-class variance
+// for every possible threshold
 EMSCRIPTEN_KEEPALIVE unsigned char* otsu(unsigned char inputBuf[], BufferPool* pool, Wasmcv* project) {
 	// Bucket sort the luma values from our input image into a histogram
 	unsigned char hist[256] = {0};
 	for (int i = 3; i < project->size; i += 4) {
 		hist[inputBuf[i]] += 1;
 	}
-	// For every possible threshold value, split the luma distribution
-	// into two classes and find the between-class variance
+	// Init some useful variables
 	float vMax = 0;
 	int thresh = 0;
+	// For every possible threshold value, split the luma distribution
+	// into two classes (foreground and background) and find the between-class variance
 	for (int t = 0; t < 256; t += 1) {
 		// Get weight of background class
 		int bSum = 0, wbSum = 0;
@@ -75,10 +76,10 @@ EMSCRIPTEN_KEEPALIVE unsigned char* otsu(unsigned char inputBuf[], BufferPool* p
 		// Get mean of background and foreground class
 		float bMean = float(wbSum) / float(bSum);
 		float fMean = float(wfSum) / float(fSum);
-		// Calculate between-class variance (faster)
+		// Calculate between-class variance
 		float m = (wB * bMean) + (wF * fMean);
 		float v = (wB * std::pow(bMean - m, 2)) + (wF * std::pow(fMean - m, 2));
-		// Select the 
+		// Select the maximum between class variance 
 		if (v > vMax) {
 			vMax = v;
 			thresh = t;

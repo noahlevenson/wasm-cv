@@ -21,6 +21,7 @@ class ImageBuffer;
 EMSCRIPTEN_KEEPALIVE Wasmcv* init(int w, int h);
 EMSCRIPTEN_KEEPALIVE bool isInImageBounds(Wasmcv* project, int offset);
 EMSCRIPTEN_KEEPALIVE std::vector<int> offsetToVec2(int offset, Wasmcv* project);
+EMSCRIPTEN_KEEPALIVE int vec2ToOffset(int x, int y, Wasmcv* project);
 
 // Class for a collection of pixel neighborhood 1D offsets
 class NeighborhoodOffsets {

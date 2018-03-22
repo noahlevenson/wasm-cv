@@ -755,6 +755,7 @@ EMSCRIPTEN_KEEPALIVE float getSecondOrderMixedMoment(std::vector<int> map, int l
 	float secondOrderMixedMoment = sum / float(region.size());
 	return secondOrderMixedMoment;
 }
+
 #ifdef __cplusplus
 }
 #endif

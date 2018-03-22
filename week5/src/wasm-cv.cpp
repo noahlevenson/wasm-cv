@@ -3,7 +3,7 @@
 *
 * source ./emsdk_env.sh --build=Release
 *
-* emcc wasm-cv.cpp util.cpp bina.cpp gray.cpp rgba.cpp -s TOTAL_MEMORY=512MB -s "EXTRA_EXPORTED_RUNTIME_METHODS=['ccall', 'cwrap']" -s WASM=1 -O3 -std=c++1z -o ../wasm-cv.js
+* emcc wasm-cv.cpp util.cpp bina.cpp gray.cpp rgba.cpp face.cpp -s TOTAL_MEMORY=512MB -s "EXTRA_EXPORTED_RUNTIME_METHODS=['ccall', 'cwrap']" -s WASM=1 -O3 -std=c++1z -o ../wasm-cv.js
 *
 */
 
@@ -13,6 +13,7 @@
 #include "bina.h"
 #include "gray.h"
 #include "rgba.h"
+#include "face.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -83,7 +84,16 @@ EMSCRIPTEN_KEEPALIVE void update() {
 	// Do some C++ stuff
 	bufferPool->copyToNew(inputBuf);
 	if (grayscaleChecked) toGrayscale(bufferPool->getCurrent(), bufferPool, project);
-	if (thresholdChecked) otsu(bufferPool->getCurrent(), bufferPool, project);
+
+
+	// Experimental - apply some viola-jones stuff
+	if (thresholdChecked) {
+		otsu(bufferPool->getCurrent(), bufferPool, project);
+		auto integral = makeIntegralImage(bufferPool->getCurrent(), project);
+		
+	}
+
+
 	if (medianChecked) median3x3(bufferPool->getCurrent(), bufferPool, project);
 	if (dilateChecked) demoDilate5x5(bufferPool->getCurrent(), bufferPool, project);
 	if (erodeChecked) demoErode5x5(bufferPool->getCurrent(), bufferPool, project);

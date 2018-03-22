@@ -32,6 +32,11 @@ EMSCRIPTEN_KEEPALIVE std::vector<int> offsetToVec2(int offset, Wasmcv* project) 
 	return vec2;
 }
 
+// Convert an (x, y) 2D vector to an HTML imagedata offset
+EMSCRIPTEN_KEEPALIVE int vec2ToOffset(int x, int y, Wasmcv* project) {
+	return (y * project->w * 4) + (x * 4);
+}
+
 #ifdef __cplusplus
 }
 #endif
