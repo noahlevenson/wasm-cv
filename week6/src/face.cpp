@@ -36,16 +36,28 @@ EMSCRIPTEN_KEEPALIVE std::vector<int> makeIntegralImage(unsigned char inputBuf[]
 }
 
 // Compute Haar-like feature type A (as described in the Wang paper) over all possible scales and
-// positions in a given subwindow -- the scale of feature type A is constrained by width
+// positions in a given subwindow size -- the scale of feature type A is constrained by width
 EMSCRIPTEN_KEEPALIVE void computeHaarA(unsigned char inputBuf[], Wasmcv* project, int s) {
+	// Loop through every possible pixel position in a subwindow of dimensions s X s
+	for (int i = 0; i < s; i += 1) {
+		for (int j = 0; j < s; j += 1) {
+			// Loop through every possible type A feature comprised of rectangles of size (w, h) such that the feature 
+			// remains constrained by the subwindow dimensions
+			for (int h = 1; i + h < s; h += 1) {
+				for (int w = 1; w * 2 + j < s; w += 1) {
 
+					
+				}
+			}
+		}
+	}
 }
 
-// Get geometry for Haar-like feature A at a given image subwindow size, subwindow position, relative position and scale
+// Get geometry for Haar-like feature A at a given image subwindow position, relative position and scale
 // The scale of feature type A is constrained by width
 // Returns a std::vector of bounding boxes
 // Useful for visualization
-EMSCRIPTEN_KEEPALIVE std::vector<std::vector<int>> getGeomHaarLikeA(int s, int sx, int sy, int rx, int ry, int w, int h) {
+EMSCRIPTEN_KEEPALIVE std::vector<std::vector<int>> getGeomHaarA(int sx, int sy, int rx, int ry, int w, int h) {
 	// TODO: Sanitize the inputs and disallow unconstrained features
 	std::vector<int> leftRectangle(4);
 	leftRectangle[0] = sx + rx;
@@ -55,8 +67,8 @@ EMSCRIPTEN_KEEPALIVE std::vector<std::vector<int>> getGeomHaarLikeA(int s, int s
 	std::vector<int> rightRectangle(4);
 	rightRectangle[0] = sx + rx + w;
 	rightRectangle[1] = sy + ry;
-	rightRectangle[3] = w;
-	rightRectangle[4] = h;
+	rightRectangle[2] = w;
+	rightRectangle[3] = h;
 	std::vector<std::vector<int>> boundingBoxes(2);
 	boundingBoxes[0] = leftRectangle;
 	boundingBoxes[1] = rightRectangle;
