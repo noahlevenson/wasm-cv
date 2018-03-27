@@ -51,7 +51,8 @@ EMSCRIPTEN_KEEPALIVE void update() {
 	unsigned char* grayscaled = toGrayscale(inputBuf, bufferPool, project);
 	auto integral = makeIntegralImage(bufferPool->getCurrent(), project);
 
-	//computeHaarA(grayscaled, project, 24);
+	computeHaarE(integral, project, 400, 0, 0);
+
 
 	EM_ASM_({
 		// Copy the input image to a new imagedata object and draw it to the output canvas
@@ -66,7 +67,7 @@ EMSCRIPTEN_KEEPALIVE void update() {
 		t2 = performance.now() - t1;
 		outputCtx.font = '30px Arial';
 		outputCtx.fillStyle = 'yellow';
-		// outputCtx.fillText(t2.toFixed(2) + ' ms', 10, 50);
+		outputCtx.fillText(t2.toFixed(2) + ' ms', 10, 50);
 	}, inputBuf);
 
 	EM_ASM(

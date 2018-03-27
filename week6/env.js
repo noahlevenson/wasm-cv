@@ -59,7 +59,7 @@ const inputCtx = inputCanvas.getContext("2d");
 // Binding for the UI start button
 function start() {
 	loopId = window.requestAnimationFrame(Module._update);
-	visualizeHaarA(74, 320, 120);
+	//visualizeHaarD(128, 320, 120);
 }
 
 // Binding for the UI stop button
@@ -107,7 +107,7 @@ function visualizeHaarA(s, sx, sy) {
 				const rightRectangle = boundingBoxes[1];
 				outputOverlayCtx.clearRect(0, 0, 640, 480);
 				outputOverlayCtx.strokeStyle = 'yellow';
-				outputOverlayCtx.strokeRect(320, 120, 7l4, 7l4);
+				outputOverlayCtx.strokeRect(320, 120, 128, 128);
 				outputOverlayCtx.fillStyle = 'white';
 				outputOverlayCtx.fillRect(leftRectangle[0], leftRectangle[1], leftRectangle[2], leftRectangle[3]);
 				outputOverlayCtx.fillStyle = 'black';
@@ -115,9 +115,60 @@ function visualizeHaarA(s, sx, sy) {
 				if (!g.done) {
 					iterate(v);
 				}
-		}, 0);
+		}, 1);
 	}
 }
 
+function visualizeHaarD(s, sx, sy) {
+	function* generateHaarD(s, sx, sy) {
+		// Loop through every possible pixel position in a subwindow of dimensions s X s
+		for (let i = 0; i < s; i += 1) {
+			for (let j = 0; j < s; j += 1) {
+				// Loop through every possible type D feature comprised of rectangles of size (w, h) such that the feature 
+				// remains constrained by the subwindow dimensions
+				for (let h = 1; i + h * 2 < s; h += 1) {
+					for (let w = 1; w * 2 + j < s; w += 1) {
+						const leftTopRectangle = [j + sx, i + sy, w, h];
+						const rightBottomRectangle = [j + sx + w, i + sy + h, w, h];
+						const rightTopRectangle = [j + sx + w, i + sy, w, h];
+						const leftBottomRectangle = [j + sx, i + sy + h, w, h];
+						const boundingBoxes = [];
+						boundingBoxes.push(leftTopRectangle);
+						boundingBoxes.push(rightBottomRectangle);
+						boundingBoxes.push(leftBottomRectangle);
+						boundingBoxes.push(rightTopRectangle);
+						yield boundingBoxes;	
+					}
+				}
+			}
+		}
+	}
+
+	const v = generateHaarD(s, sx, sy);
+	iterate(v);
+
+	function iterate(v) {
+		setTimeout(() => {
+				const g = v.next();
+				const boundingBoxes = g.value;
+				const leftTopRectangle = boundingBoxes[0];
+				const rightBottomRectangle = boundingBoxes[1];
+				const leftBottomRectangle = boundingBoxes[2];
+				const rightTopRectangle = boundingBoxes[3];
+				outputOverlayCtx.clearRect(0, 0, 640, 480);
+				outputOverlayCtx.strokeStyle = 'yellow';
+				outputOverlayCtx.strokeRect(sx, sy, s, s);
+				outputOverlayCtx.fillStyle = 'white';
+				outputOverlayCtx.fillRect(leftTopRectangle[0], leftTopRectangle[1], leftTopRectangle[2], leftTopRectangle[3]);
+				outputOverlayCtx.fillRect(rightBottomRectangle[0], rightBottomRectangle[1], rightBottomRectangle[2], rightBottomRectangle[3]);
+				outputOverlayCtx.fillStyle = 'black';
+				outputOverlayCtx.fillRect(leftBottomRectangle[0], leftBottomRectangle[1], leftBottomRectangle[2], leftBottomRectangle[3]);
+				outputOverlayCtx.fillRect(rightTopRectangle[0], leftTopRectangle[1], leftTopRectangle[2], leftTopRectangle[3]);
+				if (!g.done) {
+					iterate(v);
+				}
+		}, 1);
+	}
+}
 
 
