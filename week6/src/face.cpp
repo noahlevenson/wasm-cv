@@ -9,9 +9,9 @@
 extern "C" {
 #endif
 
-// Create an integral image from a grayscale or binary image buffer
-// The integral image at location (x, y) contains the sum of the pixels above and to the left of (x, y), inclusive
-// Returns a 2D pixel-level representation
+// Create an integral image from a grayscale image buffer
+// An integral image at location (x, y) contains the sum of the pixels above and to the left of (x, y), inclusive
+// Returns a 2D pixel-level intermediate representation
 EMSCRIPTEN_KEEPALIVE std::vector<std::vector<int>> makeIntegralImage(unsigned char inputBuf[], Wasmcv* project) {
 	// 2D Data structure for our integral image
 	std::vector<std::vector<int>> integral;
@@ -83,7 +83,7 @@ EMSCRIPTEN_KEEPALIVE void computeHaarA(std::vector<std::vector<int>>& integral, 
 				for (int w = 1; w * 2 + j < s; w += 1) {
 					int whiteSum = getRectangleSum(integral, project, j + sx, i + sy, w, h);
 					int blackSum = getRectangleSum(integral, project, j + sx + w, i + sy, w, h);
-					int diff = blackSum - whiteSum;
+					int feature = blackSum - whiteSum;
 				}
 			}
 		}
@@ -103,7 +103,7 @@ EMSCRIPTEN_KEEPALIVE void computeHaarB(std::vector<std::vector<int>>& integral, 
 					int whiteSum = getRectangleSum(integral, project, j + sx, i + sy, w, h) + 
 						getRectangleSum(integral, project, j + sx + w * 2, i + sy, w, h);
 					int blackSum = getRectangleSum(integral, project, j + sx + w, i + sy, w, h);
-					int diff = blackSum - whiteSum;
+					int feature = blackSum - whiteSum;
 				}
 			}
 		}
@@ -122,7 +122,7 @@ EMSCRIPTEN_KEEPALIVE void computeHaarC(std::vector<std::vector<int>>& integral, 
 				for (int w = 1; j + w < s; j += 1) {
 					int whiteSum = getRectangleSum(integral, project, j + sx, i + sy, w, h);
 					int blackSum = getRectangleSum(integral, project, j + sx, i + sy + h, w, h);
-					int diff = blackSum - whiteSum;
+					int feature = blackSum - whiteSum;
 				}
 			}
 		}
@@ -142,7 +142,7 @@ EMSCRIPTEN_KEEPALIVE void computeHaarD(std::vector<std::vector<int>>& integral, 
 					int whiteSum = getRectangleSum(integral, project, j + sx, i + sy, w, h) + 
 						getRectangleSum(integral, project, j + sx, i + sy + h * 2, w, h);
 					int blackSum = getRectangleSum(integral, project, j + sx, i + sy + h, w, h);
-					int diff = blackSum - whiteSum;
+					int feature = blackSum - whiteSum;
 				}
 			}
 		}
@@ -163,10 +163,19 @@ EMSCRIPTEN_KEEPALIVE void computeHaarE(std::vector<std::vector<int>>& integral, 
 						getRectangleSum(integral, project, j + sx + w, i + sy + h, w, h);
 					int blackSum = getRectangleSum(integral, project, j + sx + w, i + sy, w, h) + 
 						getRectangleSum(integral, project, j + sx, i + sy + h, w, h);
-					int diff = blackSum - whiteSum;
+					int feature = blackSum - whiteSum;
 				}
 			}
 		}
+	}
+}
+
+// Evaluate a single feature using the AdaBoost weak classifier
+EMSCRIPTEN_KEEPALIVE bool weakClassifier(int feature, int polarity, int threshold) {
+	if (polarity * feature > polarity * threshold) {
+		return 1;
+	} else {
+		return 0;
 	}
 }
 

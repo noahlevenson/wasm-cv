@@ -72,7 +72,7 @@ EMSCRIPTEN_KEEPALIVE void update() {
 
 	EM_ASM(
 		// Iterate
-		//window.requestAnimationFrame(Module._update);
+		window.requestAnimationFrame(Module._update);
 	);
 }
 

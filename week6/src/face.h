@@ -12,6 +12,7 @@ EMSCRIPTEN_KEEPALIVE void computeHaarB(std::vector<std::vector<int>>& integral, 
 EMSCRIPTEN_KEEPALIVE void computeHaarC(std::vector<std::vector<int>>& integral, Wasmcv* project, int s, int sx, int sy);
 EMSCRIPTEN_KEEPALIVE void computeHaarD(std::vector<std::vector<int>>& integral, Wasmcv* project, int s, int sx, int sy);
 EMSCRIPTEN_KEEPALIVE void computeHaarE(std::vector<std::vector<int>>& integral, Wasmcv* project, int s, int sx, int sy);
+EMSCRIPTEN_KEEPALIVE bool weakClassifier(int feature, int polarity, int threshold);
 EMSCRIPTEN_KEEPALIVE std::vector<std::vector<int>> getGeomHaarA(int sx, int sy, int rx, int ry, int w, int h);
 
 #ifdef __cplusplus
