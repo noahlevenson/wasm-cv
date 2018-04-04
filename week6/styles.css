@@ -41,7 +41,7 @@ label {
 #output-canvas {
 	width: 640px;
 	height: 480px;
-	border-width: 5px;
+	border-width: 1px;
 	border-color: #000;
 	border-style: solid;
 	position: absolute;
@@ -51,7 +51,7 @@ label {
 #video {
 	width: 640;
 	height: 480px;
-	border-width: 5px;
+	border-width: 0px;
 	border-color: #000;
 	border-style: solid;
 	position: absolute;
@@ -61,7 +61,7 @@ label {
 #output-overlay-canvas {
 	width: 640px;
 	height: 480px;
-	border-width: 5px;
+	border-width: 1px;
 	/*border-color: #ffff00;*/
 	border-color: #000;
 	border-style: solid;

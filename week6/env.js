@@ -7,10 +7,6 @@ let loopId;
 // Global for the imagedata object we read off the input canvas
 let inputImgData;
 
-// Identifiers for the webcam's native width/height...
-const webcamWidth = 640;
-const webcamHeight = 480;
-
 // Identifiers for page elements
 const outputCanvas = document.getElementById("output-canvas");
 const outputOverlayCanvas = document.getElementById("output-overlay-canvas");
@@ -18,48 +14,24 @@ const inputCanvas = document.getElementById("input-canvas");
 // const video = document.getElementById("video");
 
 // Set input and output canvas dimensions
-outputCanvas.width = webcamWidth;
-outputCanvas.height = webcamHeight;
+outputCanvas.width = 640;
+outputCanvas.height = 480;
 
-outputOverlayCanvas.width = webcamWidth;
-outputOverlayCanvas.height = webcamHeight;
+outputOverlayCanvas.width = 640;
+outputOverlayCanvas.height = 480;
 
-inputCanvas.width = webcamWidth;
-inputCanvas.height = webcamHeight;
+inputCanvas.width = 640;
+inputCanvas.height = 480;
 
 // Identifiers for canvas contexts
 const outputCtx = outputCanvas.getContext("2d");
 const outputOverlayCtx = outputOverlayCanvas.getContext("2d");
 const inputCtx = inputCanvas.getContext("2d");
 
-// Global identifiers for all the proc stack checkboxes on the page
-// let toGrayscale = document.getElementById("toGrayscale");
-// let threshold = document.getElementById("threshold");
-// let median = document.getElementById("median3x3");
-// let dilate = document.getElementById("kDilate5x5");
-// let erode = document.getElementById("kErode5x5");
-// let open = document.getElementById("open5x5");
-// let close = document.getElementById("close5x5");
-// let edges = document.getElementById("findEdges");
-// let corners = document.getElementById("findCorners");
-// let segments = document.getElementById("findSegments");
-// let segmentVisualizer = document.getElementById("visualizeSegments");
-// let centroids = document.getElementById("findCentroids");
-// let perimeter = document.getElementById("findPerimeter");
-// let bounding = document.getElementById("findBoundingBox");
-
-// Ask user's permission and then acess their webcam; getUserMedia() returns a promise that resolves 
-// with a stream object which must be assigned as the srcObject of a video object
-// navigator.mediaDevices.getUserMedia({video : true}).then(function(stream) {
-// 	video.srcObject = stream;
-// }).catch(function(err) {
-//     alert(err);
-// });
-
 // Binding for the UI start button
 function start() {
 	loopId = window.requestAnimationFrame(Module._update);
-	//visualizeHaarD(128, 320, 120);
+	visualizeHaarD(128, 320, 120);
 }
 
 // Binding for the UI stop button
@@ -122,12 +94,12 @@ function visualizeHaarA(s, sx, sy) {
 function visualizeHaarD(s, sx, sy) {
 	function* generateHaarD(s, sx, sy) {
 		// Loop through every possible pixel position in a subwindow of dimensions s X s
-		for (let i = 0; i < s; i += 1) {
-			for (let j = 0; j < s; j += 1) {
+		for (let i = 0; i <= s; i += 1) {
+			for (let j = 0; j <= s; j += 1) {
 				// Loop through every possible type D feature comprised of rectangles of size (w, h) such that the feature 
 				// remains constrained by the subwindow dimensions
-				for (let h = 1; i + h * 2 < s; h += 1) {
-					for (let w = 1; w * 2 + j < s; w += 1) {
+				for (let h = 1; i + h * 2 <= s; h += 1) {
+					for (let w = 1; w * 2 + j <= s; w += 1) {
 						const leftTopRectangle = [j + sx, i + sy, w, h];
 						const rightBottomRectangle = [j + sx + w, i + sy + h, w, h];
 						const rightTopRectangle = [j + sx + w, i + sy, w, h];
@@ -167,7 +139,7 @@ function visualizeHaarD(s, sx, sy) {
 				if (!g.done) {
 					iterate(v);
 				}
-		}, 1);
+		}, 100);
 	}
 }
 

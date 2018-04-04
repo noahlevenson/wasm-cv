@@ -3,7 +3,7 @@
 *
 * source ./emsdk_env.sh --build=Release
 *
-* emcc wasm-cv.cpp util.cpp bina.cpp gray.cpp rgba.cpp face.cpp -s TOTAL_MEMORY=512MB -s "EXTRA_EXPORTED_RUNTIME_METHODS=['ccall', 'cwrap']" -s WASM=1 -O3 -std=c++1z -o ../wasm-cv.js
+* emcc wasm-cv.cpp util.cpp bina.cpp gray.cpp rgba.cpp face.cpp -s TOTAL_MEMORY=1024MB -s "EXTRA_EXPORTED_RUNTIME_METHODS=['ccall', 'cwrap']" -s WASM=1 -O3 -std=c++1z -o ../wasm-cv.js -o ../train-cascade/wasm-cv.js
 *
 */
 
@@ -22,21 +22,21 @@ extern "C" {
 // Function prototypes
 EMSCRIPTEN_KEEPALIVE void update();
 
-Wasmcv* project = new Wasmcv(640, 480);
+Wasmcv* bigProject = new Wasmcv(640, 480);
 BufferPool* bufferPool = new BufferPool(640, 480);
 
 int main() {
-	std::cout << "Hello world! Love, C++ main()\n";
+	std::cout << "Wasm module loaded\n";
 	return 0;
 }
 
 EMSCRIPTEN_KEEPALIVE void update() {
 	// Draw our Donny image to the offscreen canvas and convert it to an imagedata object
 	EM_ASM(
-		outputOverlayCtx.clearRect(0, 0, webcamWidth, webcamHeight);
+		outputOverlayCtx.clearRect(0, 0, 24, 24);
 		t1 = performance.now();
-		inputCtx.drawImage(donny, 0, 0);
-		inputImgData = inputCtx.getImageData(0, 0, webcamWidth, webcamHeight);
+		inputCtx.drawImage(donny, 0, 0, 640, 480);
+		inputImgData = inputCtx.getImageData(0, 0, 24, 24);
 	);
 	// Copy the input imgdata object to the heap and get a C++ pointer to it
 	// This is allocating space on the C++ heap using javascript from within a C++ function
@@ -48,15 +48,15 @@ EMSCRIPTEN_KEEPALIVE void update() {
 	unsigned char* inputBuf = (unsigned char*)inputBufInt;
 	
 	// Convert Donny to grayscale and create an integral image intermediate representation
-	unsigned char* grayscaled = toGrayscale(inputBuf, bufferPool, project);
-	auto integral = makeIntegralImage(bufferPool->getCurrent(), project);
+	unsigned char* grayscaled = toGrayscale(inputBuf, bufferPool, bigProject);
+	auto integral = makeIntegralImage(bufferPool->getCurrent(), bigProject);
 
-	computeHaarE(integral, project, 400, 0, 0);
+	//computeHaarE(integral, project, 400, 0, 0);
 
 
 	EM_ASM_({
 		// Copy the input image to a new imagedata object and draw it to the output canvas
-		const outputImgData = new ImageData(webcamWidth, webcamHeight);
+		const outputImgData = new ImageData(24, 24);
 		for (var i = 0, len = outputImgData.data.length; i < len; i += 1) {
 			outputImgData.data[i] = Module.HEAPU8[$0 + i];
 		}
@@ -72,7 +72,7 @@ EMSCRIPTEN_KEEPALIVE void update() {
 
 	EM_ASM(
 		// Iterate
-		window.requestAnimationFrame(Module._update);
+		//window.requestAnimationFrame(Module._update);
 	);
 }
 
