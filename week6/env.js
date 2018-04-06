@@ -139,7 +139,7 @@ function visualizeHaarD(s, sx, sy) {
 				if (!g.done) {
 					iterate(v);
 				}
-		}, 100);
+		}, 1);
 	}
 }
 
