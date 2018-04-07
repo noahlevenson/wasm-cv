@@ -79,6 +79,7 @@ EMSCRIPTEN_KEEPALIVE int getRectangleSum(std::vector<std::vector<int>>& integral
 // over all scales and positions for a given subwindow size
 // This does not compute features and will create features with a ->f property of 0
 // returns a std::vector of Haarlike objects
+// TODO: I think we have to alternate feature types A/B/C/D/E
 EMSCRIPTEN_KEEPALIVE std::vector<Haarlike> generateFeatures(int s) {
 	std::vector<Haarlike> features;
 	// Type A
@@ -325,14 +326,16 @@ EMSCRIPTEN_KEEPALIVE void trainCascade(int posCount, int negCount) {
 	std::cout << "Generating set of 162,336 Haar-like features\n";
 	auto featureSet = generateFeatures(24);
 
-	// Data structure for our best weak classifiers
-	std::vector<WeakClassifier> bestWeakClassifiers;
-
 	// Init weights
 	std::vector<float> posWeights(posCount);
 	std::vector<float> negWeights(negCount);
 	std::fill(posWeights.begin(), posWeights.end(), float(1) / (float(2) * float(posCount)));
 	std::fill(negWeights.begin(), negWeights.end(), float(1) / (float(2) * float(negCount)));
+
+
+	float wcMinError = 1;
+
+	int championClassifier;
 
 	// Do for each of the 162,336 features
 	for (int i = 0; i < featureSet.size(); i += 1) {
@@ -472,22 +475,34 @@ EMSCRIPTEN_KEEPALIVE void trainCascade(int posCount, int negCount) {
 		// Now we have selected the best weak classifier for this feature! So we can push it
 		// into a data structure with parameters: featureSet[i], threshold, polarity
 		std::cout << "Best weak classifier for feature " << i << ": " << "threshold " << threshold << ", polarity " << polarity << std::endl; 
-		bestWeakClassifiers.push_back(WeakClassifier(featureSet[i], threshold, polarity));
+		std::cout << "Current champion classifier: feature " << championClassifier << std::endl;
+		// But the next thing we need to figure out is whether this weak classifier is better at classifying
+		// than all the weak classifiers that came before it - if the answer is no, we throw it away
+		// but if yes, it gets added to our strong classifier
+		if (minErr < wcMinError) {
+			std::cout << "This is a new champion classifier!\n";
+			championClassifier = i;
+			wcMinError = minErr;
+		}
+		
 
 		// Now it's time to update the weights!
 		float beta = minErr / (float(1) - minErr);
+
 		for (int j = 0; j < posCount; j += 1) {
 			if (classify(posFeatures[j], threshold, polarity) == 1) {
-				// std::cout << "Classified positive!\n";
 				posWeights[j] *= beta;
 			}
 		}
 		for (int j = 0; j < negCount; j += 1) {
 			if (classify(negFeatures[j], threshold, polarity) == 0) {
-				// std::cout << "Classified negative!\n";
 				negWeights[j] *= beta;
 			}
 		}
+
+
+
+		
 	}
 
 }

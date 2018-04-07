@@ -8,6 +8,7 @@ extern "C" {
 class Haarlike;
 class WeakClassifier;
 class PotentialWeakClassifier;
+class StrongClassifier;
 
 // Function prototypes
 EMSCRIPTEN_KEEPALIVE std::vector<std::vector<int>> makeIntegralImage(unsigned char inputBuf[], Wasmcv* project);
@@ -54,12 +55,16 @@ class WeakClassifier {
 			this->threshold = threshold;
 			this->polarity = polarity;
 		}
+		WeakClassifier() {
+
+		}
 		Haarlike haarlike;
 		int threshold;
 		int polarity;
 };
 
 // Class for a potential weak classifier
+// TODO - just use WeakClassifier for potentials, and delete them if they don't pass
 class PotentialWeakClassifier {
 	public:
 		PotentialWeakClassifier(int f, bool positive, float w) {
@@ -67,9 +72,22 @@ class PotentialWeakClassifier {
 			this->positive = positive;
 			this->w = w;
 		}
+		PotentialWeakClassifier() {
+
+		}
 		int f;
 		bool positive;
 		float w;
+};
+
+// Class for a strong classifier
+class StrongClassifier {
+	public:
+		StrongClassifier() {
+
+		}
+		std::vector<WeakClassifier> weakClassifiers;
+		int threshold;
 };
 
 #ifdef __cplusplus
